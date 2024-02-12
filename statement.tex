@@ -1,0 +1,605 @@
+%% -*- Mode:LaTeX -*-
+%% -*- Module: projPDC-life3d.tex
+
+%% Enunciado do Projecto de CPD 2023/2024, P3
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+
+\documentclass[11pt,a4paper,twoside]{article}
+
+%%\usepackage[portuges]{babel}
+%%\usepackage[latin1]{inputenc}%
+\usepackage{anysize}            % Para ter um area de texto maior %
+\usepackage{times}
+% \usepackage{html}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{a4wide}
+\usepackage{soul}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhead[LE,RO]{\slshape \leftmark}
+\fancyhead[LO,RE]{}
+\fancyfoot[C]{\thepage}
+
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usetikzlibrary{3d}
+\pgfmathsetmacro{\radius}{0.0}
+\newcommand{\frontcolor}{white}
+\newcommand{\rightcolor}{white}
+\newcommand{\leftcolor}{white}
+
+\renewcommand{\footrulewidth}{0.4pt}
+
+\newcommand{\ie}{{\it i.e.}}
+\newcommand{\eg}{{\it e.g.}}
+
+\pdfinfo{ % Info dictionary of PDF output; all keys are optional.
+    %% /Author (José Monteiro)
+    %% /CreationDate (D:201409271030)      % (D:YYYYMMDDhhmmss)
+                                           % default: the actual date
+    %% /ModDate (D:201109261530)           % ModDate is similar
+    %% /Creator (TeX)                      % default: "TeX"
+    %% /Producer (pdfTeX)                  % default: "pdfTeX"
+    /Title (Game of Life 3D)            %
+    /Subject (PDC Project Assignment - 2023/2024) %
+    /Keywords (computacao paralela distribuida parallel distributed computing ) %
+}
+
+\makeatletter
+\long\def\@makecaption#1#2{
+   \vskip 10pt
+   \setbox\@tempboxa\hbox{\textbf{#1: #2}}
+   \ifdim \wd\@tempboxa >\hsize % IF longer than one line:
+       \textbf{#1: #2}\par                %   THEN set as ordinary paragraph.
+     \else                      %   ELSE  center.
+       \hbox to\hsize{\hfil\box\@tempboxa\hfil}
+   \fi}
+\makeatother
+
+\def\floatpagefraction{1}
+\def\textfraction{0}
+\def\topfraction{1}
+\def\bottomfraction{1}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+
+\title{
+  \vspace*{-4cm}
+  \begin{minipage}[l]{0cm}
+    \hspace*{-4.5cm}
+    %%\vspace*{-2cm}
+    \includegraphics[width=6cm]{IST_A_CMYK_Pos.pdf}
+  \end{minipage}
+  \begin{minipage}[r]{10cm}
+    \begin{center}
+    \vspace*{2.5cm}
+%      \LARGE Instituto Superior T\'{e}cnico\\[0.5cm]
+%%      \hspace*{-1.5cm}\Large MEIC - Mestrado em Engenharia
+%%      Informática e de Computadores\\[0.5cm]
+%%      \hspace*{-1.5cm}\Large MEEC - Mestrado em Engenharia
+%%      Electrotécnica e de Computadores\\[0.5cm]
+%%      \hspace*{-1.5cm}\Large MERC - Mestrado em Engenharia
+%%      de Redes de Comunicação\\[2.0cm]
+    \end{center}
+  \end{minipage}
+}
+\author{
+  \vspace*{1.5cm}
+  \Huge Parallel and Distributed Computing\\[1.5cm]
+  \LARGE \underline{Project Assignment}\\[1.5cm]
+%%  \includegraphics[width=12cm]{figs/network-flow-graph-02.png}\\[1.0cm]
+%%  \includegraphics[width=12cm]{figs/network-flow-graph.pdf}\\[1.0cm]
+  \vspace*{8cm}
+  \fbox{\parbox{13cm}{
+      \begin{center}
+        \huge
+        \underline{{\sc Game of Life 3D}}
+      \end{center}
+    }}\\[0.5cm]
+  \Large \textbf{Version 1.0 (06/02/2024)} } \date{\vspace*{1cm}
+  \Large 2023/2024\\[0.25cm]
+  3rd Quarter}
+
+\maketitle
+\thispagestyle{empty}
+
+\newpage
+\tableofcontents
+\setcounter{page}{1}
+
+\vspace*{4cm}
+\flushbottom
+\noindent \textbf{\Large Revisions}\\[1cm]
+\begin{tabular}{|ll|}
+  \hline
+  & \\
+  Version 1.0 (February 6, 2024) & Initial Version \\
+  \hline
+\end{tabular}
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+\label{sec:introduction}
+
+The purpose of this class project is to gain experience in parallel
+programming on shared and distributed memory systems, using OpenMP and
+MPI, respectively.  For this assignment you are to write a sequential
+and two parallel implementations of the game of life in 3D.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Problem Description}
+\label{sec:problem-description}
+
+The life game is a zero-player game, that starts from an initial
+distribution of individuals in the game space. The game evolves by
+computing new generations of individuals based on simple rules.
+
+For this assignment we consider a three-dimensional space, a cube with
+$N$ cells per side. Each cell will have 26 neighbor cells (this
+is true for all cells, we consider that the sides wrap-around, \ie,
+cells with indices $i$ and $i+N$ are the same) . Each cell of this
+cube may be occupied (live) or empty (dead). In order to determine the
+status of a cell in the next generation, the following rules should be used:
+\begin{itemize}
+\item a live cell with 4 or less live neighbors dies.
+\item a live cell with 5 to 13 live neighbors lives on to the next generation.
+\item a live cell with more than 13 live neighbors dies.
+\item a dead cell with 7 to 10 live neighbors becomes a live cell.
+\end{itemize}
+
+Additionally, consider that we may have up to 9 species in the
+game, thus the cells will hold a value between 1 and 9. The species of
+a cell that becomes alive corresponds to the majority of the species
+surrounding it (to break ties, use the lower species value in the tie).
+
+From an initial population in the cube, the objective is to compute
+the population through a given number of generations. Note that all
+the cells of the next generation are computed from the cells of the
+previous iterations, hence the order that the cells are computed is irrelevant.
+
+To avoid reading (and moving around) large files, the initial
+population is generated randomly inside the program. To ensure that
+everyone has the same starting point (allowing for the validation of
+the results), the routine to create the simulation space is given in
+Appendix~\ref{sec:init_code}. You are free to modify this this code, but
+please make sure you get the same initial population!
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Implementation Details}
+
+\subsection{Input Data}
+\label{sec:input-data}
+
+Your program should allow exactly 4 input line parameters, in this order:
+\begin{itemize}
+\item number of generations (positive integer)
+\item number of cells per side of the cube (positive integer)
+\item density of the initial population (float between 0 and 1)
+\item seed for the random number generator (integer)
+\end{itemize}
+
+
+\subsection{Output Data}
+\label{sec:output-data}
+
+The program should send to the standard output ({\tt stdout}) 9 lines,
+one per species and in increasing order of these, each with three
+integers representing, respectively: the species id; the maximum
+number of these species over all generations; generation where this
+maximum was achieved (lowest generation in case of draw).
+
+Note that we will be using very large simulation spaces, be sure to
+use {\bf integers with 64 bits} for your counters.
+
+Your program should send these output lines (and {\bf nothing else!}) to the
+standard output.
+
+The project \textbf{cannot be graded} unless you follow these input
+and output rules!
+
+
+\subsection{Sample Problem}
+\label{sec:sample-problem}
+
+If you run your program with the following input parameters, the
+result should be what is presented next:
+\begin{verbatim}
+$ ./life3d 4 4 .4 100
+1 4 3
+2 1 0
+3 2 0
+4 1 0
+5 1 0
+6 14 4
+7 5 0
+8 2 0
+9 4 0
+\end{verbatim}
+
+For debugging purposes, you can check the population evolution for this
+example in Appendix~\ref{sec:debug}.
+
+
+\subsection{Measuring Execution Time}
+\label{sec:exec-time}
+
+To make sure everyone uses the same measure for the execution time,
+the routine {\tt omp\_get\_wtime()} from OpenMP will be used, which
+measures real time (also known as ``wall-clock time''). This same
+routine should be used by all three versions of your project.
+
+Hence, your programs should have a structure similar to this:
+
+\begin{small}
+\begin{verbatim}
+#include <omp.h>
+<...>
+
+int main(int argc, char *argv[])
+{
+    double exec_time;
+
+    grid = gen_initial_grid(N, seed, density);
+    exec_time = -omp_get_wtime();
+
+    simulation();
+
+    exec_time += omp_get_wtime();
+    fprintf(stderr, "%.1fs\n", exec_time);
+
+    print_result();       // to the stdout!   
+ }
+\end{verbatim}
+\end{small}
+
+In this way the execution time will only account the algorithm running
+time, and be sent to the standard error, {\tt stderr}. The use of
+these two output streams allows the validation of the results and
+analysis of execution time needed to be performed separately.
+
+Because this time routine is part of OpenMP, you need the include {\tt
+  omp.h} and compile all your programs with the flag {\tt -fopenmp}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+
+\section{Submission}
+
+\subsection{Part 1 - Serial implementation}
+\label{sec:part1-serial}
+
+Write a serial implementation of the algorithm in C (or C++). Name the
+source file of this implementation {\tt life3d.c}. As stated above, your
+program should expect exactly four input parameters.
+
+This will be your base for comparisons and it is expected that it
+is as efficient as possible.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+
+\subsection{Part 2 - OpenMP implementation}
+\label{sec:part1-openmp}
+
+Write an OpenMP implementation of the algorithm, with the same rules
+and input/output descriptions. Name this source code {\tt
+  life3d-omp.c}. You can start by simply adding OpenMP directives, but
+you are free, and encouraged, to modify the code in order to make the
+parallelization more effective and more scalable.  Be careful about
+synchronization and load balancing!
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+
+\subsection{Part 3 - MPI implementation}
+\label{sec:part1-mpi}
+
+Write an MPI implementation of the algorithm as for OpenMP, and
+address the same issues. Name this source code {\tt life3d-mpi.c}.
+
+For MPI, you will need to modify your code substantially. Besides
+synchronization and load balancing, you will need to take into
+account the minimization of the impact of communication costs. You are
+encouraged to explore different approaches for the problem decomposition.
+
+Note that this distributed version should permit running larger
+instances, namely instances that do not fit in the memory of a single
+machine.
+
+Extra credits will be given to groups that present a combined
+MPI+OpenMP implementation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%
+
+\subsection{What to Turn In}
+\label{sec:turn-in}
+
+You must eventually submit the sequential and both parallel versions
+of your program ({\bf please use the filenames indicated above}), and
+a table with the times to run the parallel versions on input data that
+will be made available (for 1, 2, 4 and 8 parallel tasks for both
+OpenMP and MPI, and additionally 16, 32 and 64 for MPI).
+
+For both the OpenMP and MPI versions (not for serial), you must also
+submit a short report about the results (2-4 pages) that 
+discusses:\\[-6mm]
+%%
+\begin{itemize}
+  %%
+  \parskip 0pt
+  %%
+\item the approach used for parallelization
+  %%
+%% \item what algorithm was used to address the problem
+%%   %%
+\item what decomposition was used
+  %%
+\item what were the synchronization concerns and why
+  %%
+\item how was load balancing addressed
+  %%
+\item what are the performance results, and are they what you expected
+  %%
+\end{itemize}
+
+The code, makefile and report will be uploaded to the Fenix system in
+a zip file. {\bf Name these files} as {\tt g<n>serial.zip}, {\tt
+  g<n>omp.zip} and {\tt g<n>mpi.zip}, where {\tt <n>} is your group number.
+%%
+
+\subsection{Deadlines}
+\begin{description}
+  %%
+  \parskip 0pt
+  %%
+\item[] 1st due date, serial version: {\bf March 2nd}, until 23:59.\\
+%  Note: your project will be tested in the lab class right after this due date.
+  %%
+\item[] 2nd due date (OpenMP):  {\bf March 16th}, until 23:59.\\
+%  Note: your project will be tested in the lab class right after this due date.
+  %%
+\item[] 3rd due date (MPI):  {\bf March 20th}, until 23:59.\\
+%  Note: your project will be tested in the lab class right after this due date.
+  %%
+\end{description}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\appendix
+
+\section{Code to Generate the Initial Grid}
+\label{sec:init_code}
+
+\begin{verbatim}
+#define N_SPECIES 9
+
+unsigned int seed;
+
+void init_r4uni(int input_seed)
+{
+    seed = input_seed + 987654321;
+}
+
+float r4_uni()
+{
+    int seed_in = seed;
+
+    seed ^= (seed << 13);
+    seed ^= (seed >> 17);
+    seed ^= (seed << 5);
+
+    return 0.5 + 0.2328306e-09 * (seed_in + (int) seed);
+}
+
+char ***gen_initial_grid(long long N, float density, int input_seed)
+{
+    int x, y, z;
+
+    grid = (char ***) malloc(N * sizeof(char **));
+    if(grid == NULL) {
+        printf("Failed to allocate matrix\n");
+        exit(1);
+    }
+    for(x = 0; x < N; x++) {
+        grid[x] = (char **) malloc(N * sizeof(char *));
+        if(grid[x] == NULL) {
+            printf("Failed to allocate matrix\n");
+            exit(1);
+        }
+        grid[x][0] = (char *) calloc(N * N, sizeof(char));
+        if(grid[x][0] == NULL) {
+            printf("Failed to allocate matrix\n");
+            exit(1);
+        }
+        for (y = 1; y < N; y++)
+            grid[x][y] = grid[x][0] + y * N;
+    }
+
+    init_r4uni(input_seed);
+    for (x = 0; x < N; x++)
+        for (y = 0; y < N; y++)
+            for (z = 0; z < N; z++)
+                if(r4_uni() < density)
+                    grid[x][y][z] = (int)(r4_uni() * N_SPECIES) + 1;
+
+    return grid;
+}
+\end{verbatim}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\section{Debug of Simple Input}
+\label{sec:debug}
+
+Your program \textbf{should not} print this, use this information only
+for debug purposes.
+
+\begin{verbatim}
+Generation 0   ------------------------------
+Layer 0:
+    1 6 
+  1 8   
+  6   4 
+    9   
+
+Layer 1:
+6       
+1   2   
+3   9 7 
+6       
+
+Layer 2:
+  3 9 6 
+        
+9   6   
+6       
+
+Layer 3:
+  6   6 
+6 7 7   
+  8 7 5 
+7       
+
+Generation 1   ------------------------------
+Layer 0:
+6   1 6 
+        
+      4 
+    9   
+
+Layer 1:
+6   1   
+1   2   
+3   9 7 
+6       
+
+Layer 2:
+  3 9 6 
+        
+9   6   
+6       
+
+Layer 3:
+6 6   6 
+6 7     
+6 8 7 5 
+7       
+
+Generation 2   ------------------------------
+Layer 0:
+6   1 6 
+        
+    7 4 
+    9   
+
+Layer 1:
+6   1   
+1   2   
+3 6 9 7 
+6       
+
+Layer 2:
+  3 9 6 
+        
+9   6   
+        
+
+Layer 3:
+6 6 6 6 
+6 7     
+6 8 7 5 
+7       
+
+Generation 3   ------------------------------
+Layer 0:
+6   1 6 
+        
+    7 4 
+        
+
+Layer 1:
+6 1 1   
+1   2   
+3 6 9 7 
+6       
+
+Layer 2:
+  3 9 6 
+        
+9   6   
+        
+
+Layer 3:
+6 6 6 6 
+6       
+6 8 7 5 
+7       
+
+Generation 4   ------------------------------
+Layer 0:
+6   1 6 
+        
+    7 4 
+        
+
+Layer 1:
+6 1 1 6 
+1   2   
+3 6 9 7 
+6       
+
+Layer 2:
+  3 9 6 
+        
+9   6   
+        
+
+Layer 3:
+6 6 6 6 
+6       
+6 8 7 5 
+7
+\end{verbatim}
+
+
+\end{document}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% eval: (auto-fill-mode t)
+%%% End:
+
