@@ -1,12 +1,6 @@
-/*
-* TEMPLATE
-* DO NOT EDIT 
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
-
-#define N_SPECIES 9
+#include "world_gen.h"
 
 extern char ***grid;
 unsigned int seed;

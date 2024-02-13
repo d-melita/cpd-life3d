@@ -8,3 +8,7 @@
 # Zips for delivery
 delivery/*
 *.pdf
+
+# C
+*.o
+src/*/life3d
