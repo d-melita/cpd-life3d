@@ -12,3 +12,8 @@ delivery/*
 # C
 *.o
 src/*/life3d
+
+# Tests
+*.err
+*.diff
+*.myout

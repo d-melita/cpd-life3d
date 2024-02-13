@@ -1,0 +1,67 @@
+#! /bin/bash
+
+RED="\e[31m"
+GREEN="\e[32m"
+ENDCOLOR="\e[0m"
+
+function die() {
+	cat <<EOF 
+Usage: test version
+
+    - version: serial or omp or mpi
+
+
+Runs tests in test directory for specified version.
+EOF
+
+	exit 1
+}
+
+function compile() {
+	cd $version
+	make life3d || (echo "Compilation failed" && exit 1)
+	cd ..
+}
+
+
+# Parse args
+
+if [[ $# -ne 1 ]]; then
+	die
+fi
+
+if [[ $1 != serial ]] && [[ $1 != omp ]] && [[ $1 != mpi ]]; then
+	echo "Invalid version. Must be serial, omp or mpi."
+	die
+fi
+
+version=$1
+
+# Compile code
+
+echo "Compiling life3d"
+compile
+# Run tests
+
+printf "\nRunning tests\n"
+cd tests || exit 1
+for file in $(ls -- *.in); do
+	name="${file%.*}"
+	in=$name.in
+	out=$name.out
+	err=$name.err
+	myout=$name.myout
+	diff=$name.diff
+
+	echo -n "$name:"
+	../$version/life3d $(cat $in) > $myout 2> $err
+	diff $out $myout > $diff
+
+	if [ -s $diff ]; then
+		echo -e "$RED failed$ENDCOLOR"
+	else
+		echo -e "$GREEN success$ENDCOLOR"
+	fi
+done
+
+cd ..
