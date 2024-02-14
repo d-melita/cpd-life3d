@@ -43,9 +43,15 @@ echo "Compiling life3d"
 compile
 # Run tests
 
+
+total=0
+failed=0
+
 printf "\nRunning tests\n"
 cd tests || exit 1
 for file in $(ls -- *.in); do
+	total=$((total+1))
+
 	name="${file%.*}"
 	in=$name.in
 	out=$name.out
@@ -59,9 +65,18 @@ for file in $(ls -- *.in); do
 
 	if [ -s $diff ]; then
 		echo -e "$RED failed$ENDCOLOR"
+		failed=$((failed+1))
 	else
 		echo -e "$GREEN success$ENDCOLOR"
 	fi
 done
 
+printf "\nFailed $failed/$total\n"
+
 cd ..
+
+if [[ $failed -gt 0 ]]; then
+	exit 1
+else
+	exit 0
+fi
