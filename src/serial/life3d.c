@@ -72,10 +72,26 @@ Args parse_args(int argc, char* argv[]) {
   return args;
 }
 
+int debug (char ***grid, long long n) {
+    for (int x = 0; x < n; x++) {
+        printf("Layer %d:\n", x);
+        for (int y = 0; y < n; y++) {
+            for (int z = 0; z < n; z++) {
+              printf("%d ", grid[x][y][z]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[]) {
   double exec_time;
   Args args = parse_args(argc, argv);
-  grid = gen_initial_grid(args.n, args.seed, args.density);
+  grid = gen_initial_grid(args.n, args.density, args.seed);
+  debug(grid, args.n);
   exec_time = -omp_get_wtime();
   simulation();
   exec_time += omp_get_wtime();
