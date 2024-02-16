@@ -46,8 +46,9 @@ fi
 
 echo "Compiling life3d"
 compile
-# Run tests
 
+
+# Run tests
 
 total=0
 failed=0
