@@ -59,7 +59,7 @@ for count in $counts; do
 			for ((seed = 1; seed <= k; seed++)); do
 				echo "Running with gen_count=$count, n=$n, density=$density, seed=$seed"
 				./$version/life3d $count $n $density $seed > /dev/null 2> $tmp_file
-				wall=$(tail -n 1 $tmp_file | grep -oE "[0-9](\.[0-9]+)?")
+				wall=$(tail -n 1 $tmp_file | grep -oE "[0-9]+(\.[0-9]+)?")
 				echo "$count,$n,$density,$seed,$wall" >> $csv
 			done
 		done
