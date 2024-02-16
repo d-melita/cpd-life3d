@@ -6,26 +6,6 @@
 
 #include "world_gen.h"
 
-inline uint32_t count_live_neighbours(uint32_t *neighbours) {
-  uint32_t count = 0;
-  for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
-    count += (neighbours[i] != 1);
-  }
-  return count;
-}
-
-inline uint32_t get_next_specie(uint32_t *neighbours) {
-  uint32_t count[9] = {0};
-  for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
-    count[neighbours[i]]++;
-  }
-  uint32_t gen = 1;
-  for (uint32_t i = 2; i < 9; i++) {
-    gen = (count[i] > count[gen]) ? i : gen;
-  }
-  return gen;
-}
-
 inline int64_t get_index(int64_t value, uint32_t n) {
   if (value < 0) {
     return value + n;
@@ -34,35 +14,6 @@ inline int64_t get_index(int64_t value, uint32_t n) {
   } else {
     return value;
   }
-}
-
-/**
- * TODO: Add description
- * TODO: Check if compiler unrools this properly (if not, just hard code the 26
- * values)
- */
-void get_neighbours(int64_t x, int64_t y, int64_t z, uint32_t n, char ***grid,
-                    uint32_t *neighbours) {
-  uint64_t index = 0;
-  for (int64_t i = -NEIGHBOURS_RANGE; i <= NEIGHBOURS_RANGE; i++) {
-    for (int64_t j = -NEIGHBOURS_RANGE; j <= NEIGHBOURS_RANGE; j++) {
-      for (int64_t k = -NEIGHBOURS_RANGE; k <= NEIGHBOURS_RANGE; k++) {
-        if (i == 0 && j == 0 && k == 0) {
-          continue;
-        }
-        neighbours[index] =
-            grid[get_index(x + i, n)][get_index(y + j, n)][get_index(z + k, n)];
-        index++;
-      }
-    }
-  }
-}
-
-void print_neighbours(uint32_t *neighbours) {
-  for (int i = 0; i < N_NEIGHBOURS; i++) {
-    printf("%d ", neighbours[i]);
-  }
-  printf("\n");
 }
 
 typedef struct args {
@@ -174,7 +125,8 @@ inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
     }
   }
 
-  fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n", most_common, most_common_count, live_count);
+  fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n",
+          most_common, most_common_count, live_count);
 
   char current = grid[x][y][z];
   if (current != 0) { // if cell is alive
@@ -188,14 +140,14 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   uint32_t sim = 1;
   char ***old, ***new, ***tmp;
 
-  uint32_t peak_gen[N_NEIGHBOURS+1];
-  memset(peak_gen, 0, sizeof(uint32_t) * (N_NEIGHBOURS+1));
+  uint32_t peak_gen[N_NEIGHBOURS + 1];
+  memset(peak_gen, 0, sizeof(uint32_t) * (N_NEIGHBOURS + 1));
 
-  uint64_t max_population[N_NEIGHBOURS+1];
-  memset(max_population, 0, sizeof(uint64_t) * (N_NEIGHBOURS+1));
+  uint64_t max_population[N_NEIGHBOURS + 1];
+  memset(max_population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
 
-  uint64_t population[N_NEIGHBOURS+1];
-  memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS+1));
+  uint64_t population[N_NEIGHBOURS + 1];
+  memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
 
   old = grid;
   new = new_grid(n);
@@ -214,11 +166,12 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
 
   fprintf(stderr, "Initial stats ================================\n");
   for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
-    fprintf(stderr, "%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
+    fprintf(stderr, "%d %ld %d\n", specie, max_population[specie],
+            peak_gen[specie]);
   }
 
   for (uint32_t gen = 0; gen < max_gen; gen++) {
-    memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS+1));
+    memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
 
     for (uint32_t x = 0; x < n; x++) {
       for (uint32_t y = 0; y < n; y++) {
@@ -226,7 +179,8 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
 
           new[x][y][z] = next_inhabitant(x, y, z, n, old);
           population[new[x][y][z]]++;
-          fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y, z, n, new[x][y][z]);
+          fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
+                  z, n, new[x][y][z]);
         }
       }
     }
@@ -235,10 +189,12 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
     old = new;
     new = tmp;
 
-    fprintf(stderr, "Grid after generation %d =====================\n", gen + 1);
+    fprintf(stderr, "Grid after generation %d =====================\n",
+            gen + 1);
     debug(n, old);
 
-    fprintf(stderr, "Stats for generation %d ======================\n", gen + 1);
+    fprintf(stderr, "Stats for generation %d ======================\n",
+            gen + 1);
     for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
       fprintf(stderr, "%d %ld\n", specie, population[specie]);
     }
@@ -246,7 +202,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
     for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
       if (max_population[specie] < population[specie]) {
         max_population[specie] = population[specie];
-        peak_gen[specie] = gen+1;
+        peak_gen[specie] = gen + 1;
       }
     }
   }
@@ -262,12 +218,10 @@ int main(int argc, char *argv[]) {
   Args args = parse_args(argc, argv);
   char ***grid = gen_initial_grid(args.n, args.density, args.seed);
 
-  // uint32_t *neighbours = get_neighbours(3, 2, 2, args.n, grid);
-  // print_neighbours(neighbours);
-  // free(neighbours);
-
   exec_time = -omp_get_wtime();
+
   simulation(args.n, args.gen_count, grid);
+
   exec_time += omp_get_wtime();
   fprintf(stderr, "Took: %.1fs\n", exec_time);
 
