@@ -2,6 +2,9 @@ GROUP_NUMBER=1
 
 group_dir=g${GROUP_NUMBER}
 
+all: statement
+statement: statement.pdf
+
 reports: report_template report_serial report_omp report_mpi
 
 report_template: 
@@ -30,7 +33,7 @@ zip_%:
 	zip -r ${group_dir}$*.zip ${group_dir}$*
 	rm -r ${group_dir}$*
 
-check_src_structure: 
+check_src_structure:
 	test -d ./src/serial || exit 1
 	test -d ./src/omp || exit 1
 	test -d ./src/mpi || exit 1
@@ -42,6 +45,10 @@ check_src_structure:
 	test -e ./src/serial/report/report.pdf || exit 1
 	test -e ./src/omp/report/report.pdf || exit 1
 	test -e ./src/mpi/report/report.pdf || exit 1
+
+statement.pdf: statement.tex
+	pdflatex -enable-write18 statement.tex
+	rm -f *.log *.aux *.out
 
 clean:
 	rm -f *.log *.aux *.out *.toc

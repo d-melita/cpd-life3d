@@ -7,8 +7,26 @@
 
 char ***grid;
 
-void simulation() {
-  // TODO
+char *** second_grid;
+
+uint32_t count_live_neighbours(uint32_t *neighbours) {
+  uint32_t count = 0;
+  for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
+    count += (neighbours[i] != 1);
+  }
+  return count;
+}
+
+uint32_t get_next_specie(uint32_t *neighbours) {
+  uint32_t count[9] = {0};
+  for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
+    count[neighbours[i]]++;
+  }
+  uint32_t gen = 1;
+  for (uint32_t i = 2; i < 9; i++) {
+    gen = (count[i] > count[gen]) ? i : gen;
+  }
+  return gen;
 }
 
 int64_t get_index(int64_t value, long long n) {
@@ -60,14 +78,8 @@ void help() {
 Args parse_args(int argc, char* argv[]) {
   Args args = {};
 
-  if (argc < 5) {
-    printf("Insufficient arguments (5 required, %d provided)\n", argc);
-    help();
-    exit(1);
-  }
-
-  if (argc > 5) {
-    printf("Too many arguments (5 required, %d provided)\n", argc);
+  if (argc < 5 || argc > 5) {
+    printf("Wrong number of arguments (5 required, %d provided)\n", argc);
     help();
     exit(1);
   }
@@ -95,7 +107,6 @@ Args parse_args(int argc, char* argv[]) {
     exit(1);
   }
 
-
   args.seed = atoi(argv[4]);
 
   if (args.seed == 0) {
@@ -122,6 +133,40 @@ int debug (long long n) {
     return EXIT_SUCCESS;
 }
 
+void simulation(long long n) {
+  uint32_t sim = 1;
+  uint32_t *neighbours = (uint32_t *)malloc(N_NEIGHBOURS * sizeof(int));
+  // for simulations 1, 3, 5, 7, and 9 we use sim = 1 and second_grid
+  // for simulations 2, 4, 6, 8, and 10 we use sim = 0 and grid
+
+  for (uint32_t gen = 0; gen < 10; gen++) {
+    for (uint64_t x = 0; x < n; x++) {
+      for (uint64_t y = 0; y < n; y++) {
+        for (uint64_t z = 0; z < n; z++) {
+          neighbours = get_neighbours(x, y, z, n);
+          uint32_t count = count_live_neighbours(neighbours);
+
+          if (sim) {
+            if (grid[x][y][z] != 0) {  // if cell is alive
+              second_grid[x][y][z] = (5 <= count <= 13) ? get_next_specie(neighbours) : 0;
+            } else {  // if cell is dead
+              second_grid[x][y][z] = (7 <= count <= 10) ? get_next_specie(neighbours) : 0;
+            }
+          } else {
+            if (second_grid[x][y][z] != 0) {  // if cell is alive
+              grid[x][y][z] = (5 <= count <= 13) ? get_next_specie(neighbours) : 0;
+            } else {  // if cell is dead
+              grid[x][y][z] = (7 <= count <= 10) ? get_next_specie(neighbours) : 0;
+            }
+          }
+          free(neighbours);
+        }
+        sim = !sim;
+      }
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   double exec_time;
   Args args = parse_args(argc, argv);
@@ -129,7 +174,7 @@ int main(int argc, char *argv[]) {
   debug(args.n);
   print_neighbours(get_neighbours(3, 2, 2, args.n));
   exec_time = -omp_get_wtime();
-  simulation();
+  simulation(args.n);
   exec_time += omp_get_wtime();
   fprintf(stderr, "Took: %.1fs\n", exec_time);
 
