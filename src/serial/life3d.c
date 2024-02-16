@@ -21,7 +21,7 @@ int64_t get_index(int64_t value, long long n) {
   }
 }
 
-uint32_t* get_neighbours(uint64_t x, uint64_t y, uint64_t z, long long n) {
+uint32_t* get_neighbours(int64_t x, int64_t y, int64_t z, long long n) {
   uint32_t *neighbours = (uint32_t *)malloc(N_NEIGHBOURS * sizeof(int));
   uint64_t index = 0;
   for (int64_t i = -NEIGHBOURS_RANGE; i <= NEIGHBOURS_RANGE; i++) {
