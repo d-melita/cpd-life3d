@@ -2,14 +2,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "world_gen.h"
 
-char ***grid;
-
-char *** second_grid;
-
-uint32_t count_live_neighbours(uint32_t *neighbours) {
+inline uint32_t count_live_neighbours(uint32_t *neighbours) {
   uint32_t count = 0;
   for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
     count += (neighbours[i] != 1);
@@ -17,7 +14,7 @@ uint32_t count_live_neighbours(uint32_t *neighbours) {
   return count;
 }
 
-uint32_t get_next_specie(uint32_t *neighbours) {
+inline uint32_t get_next_specie(uint32_t *neighbours) {
   uint32_t count[9] = {0};
   for (uint32_t i = 0; i < N_NEIGHBOURS; i++) {
     count[neighbours[i]]++;
@@ -29,18 +26,23 @@ uint32_t get_next_specie(uint32_t *neighbours) {
   return gen;
 }
 
-int64_t get_index(int64_t value, long long n) {
+inline int64_t get_index(int64_t value, uint32_t n) {
   if (value < 0) {
-    return n + value;
+    return value + n;
   } else if (value >= n) {
-    return value%n;
+    return value - n;
   } else {
     return value;
   }
 }
 
-uint32_t* get_neighbours(int64_t x, int64_t y, int64_t z, long long n) {
-  uint32_t *neighbours = (uint32_t *)malloc(N_NEIGHBOURS * sizeof(int));
+/**
+ * TODO: Add description
+ * TODO: Check if compiler unrools this properly (if not, just hard code the 26
+ * values)
+ */
+void get_neighbours(int64_t x, int64_t y, int64_t z, uint32_t n, char ***grid,
+                    uint32_t *neighbours) {
   uint64_t index = 0;
   for (int64_t i = -NEIGHBOURS_RANGE; i <= NEIGHBOURS_RANGE; i++) {
     for (int64_t j = -NEIGHBOURS_RANGE; j <= NEIGHBOURS_RANGE; j++) {
@@ -48,12 +50,12 @@ uint32_t* get_neighbours(int64_t x, int64_t y, int64_t z, long long n) {
         if (i == 0 && j == 0 && k == 0) {
           continue;
         }
-        neighbours[index] = grid[get_index(x + i, n)][get_index(y + j, n)][get_index(z + k, n)];
+        neighbours[index] =
+            grid[get_index(x + i, n)][get_index(y + j, n)][get_index(z + k, n)];
         index++;
       }
     }
   }
-  return neighbours;
 }
 
 void print_neighbours(uint32_t *neighbours) {
@@ -61,24 +63,21 @@ void print_neighbours(uint32_t *neighbours) {
     printf("%d ", neighbours[i]);
   }
   printf("\n");
-  free(neighbours);
 }
 
 typedef struct args {
   uint32_t gen_count;
-  long long n;
+  uint32_t n;
   float density;
   int seed;
 } Args;
 
-void help() {
-  fprintf(stderr, "\nUsage: life3d gen_count N density seed\n");
-}
+void help() { fprintf(stderr, "\nUsage: life3d gen_count N density seed\n"); }
 
-Args parse_args(int argc, char* argv[]) {
+Args parse_args(int argc, char *argv[]) {
   Args args = {};
 
-  if (argc < 5 || argc > 5) {
+  if (argc != 5) {
     printf("Wrong number of arguments (5 required, %d provided)\n", argc);
     help();
     exit(1);
@@ -118,63 +117,113 @@ Args parse_args(int argc, char* argv[]) {
   return args;
 }
 
-int debug (long long n) {
-    for (uint64_t x = 0; x < n; x++) {
-        printf("Layer %ld:\n", x);
-        for (uint64_t y = 0; y < n; y++) {
-            for (uint64_t z = 0; z < n; z++) {
-              printf("%d ", grid[x][y][z]);
-            }
-            printf("\n");
+int debug(uint32_t n, char ***grid) {
+  for (uint64_t x = 0; x < n; x++) {
+    printf("Layer %ld:\n", x);
+    for (uint64_t y = 0; y < n; y++) {
+      for (uint64_t z = 0; z < n; z++) {
+        char value = grid[x][y][z];
+        if (value > 0) {
+          printf("%d ", value);
+        } else {
+          printf("  ");
         }
-        printf("\n");
+      }
+      printf("\n");
     }
+    printf("\n");
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
 
-void simulation(long long n) {
-  uint32_t sim = 1;
-  uint32_t *neighbours = (uint32_t *)malloc(N_NEIGHBOURS * sizeof(int));
-  // for simulations 1, 3, 5, 7, and 9 we use sim = 1 and second_grid
-  // for simulations 2, 4, 6, 8, and 10 we use sim = 0 and grid
+/**
+ * Computes new inhabitant for cell at position (x, y, z) of grid
+ */
+inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
+                            char ***grid) {
+  // Compute stats for neighbours
+  uint32_t counts[N_NEIGHBOURS + 1];
+  memset(counts, 0, (N_NEIGHBOURS + 1) * sizeof(uint32_t));
 
-  for (uint32_t gen = 0; gen < 10; gen++) {
-    for (uint64_t x = 0; x < n; x++) {
-      for (uint64_t y = 0; y < n; y++) {
-        for (uint64_t z = 0; z < n; z++) {
-          neighbours = get_neighbours(x, y, z, n);
-          uint32_t count = count_live_neighbours(neighbours);
-
-          if (sim) {
-            if (grid[x][y][z] != 0) {  // if cell is alive
-              second_grid[x][y][z] = (5 <= count <= 13) ? get_next_specie(neighbours) : 0;
-            } else {  // if cell is dead
-              second_grid[x][y][z] = (7 <= count <= 10) ? get_next_specie(neighbours) : 0;
-            }
-          } else {
-            if (second_grid[x][y][z] != 0) {  // if cell is alive
-              grid[x][y][z] = (5 <= count <= 13) ? get_next_specie(neighbours) : 0;
-            } else {  // if cell is dead
-              grid[x][y][z] = (7 <= count <= 10) ? get_next_specie(neighbours) : 0;
-            }
-          }
-          free(neighbours);
+  for (int64_t i = -NEIGHBOURS_RANGE; i <= NEIGHBOURS_RANGE; i++) {
+    for (int64_t j = -NEIGHBOURS_RANGE; j <= NEIGHBOURS_RANGE; j++) {
+      for (int64_t k = -NEIGHBOURS_RANGE; k <= NEIGHBOURS_RANGE; k++) {
+        if (i == 0 && j == 0 && k == 0) {
+          continue;
         }
-        sim = !sim;
+        char neighbour =
+            grid[get_index(x + i, n)][get_index(y + j, n)][get_index(z + k, n)];
+        counts[neighbour]++;
       }
     }
   }
+
+  uint32_t most_common = 0;
+  uint32_t most_common_count = 0;
+  uint32_t live_count = 0;
+
+  for (uint32_t specie = 1; specie <= N_NEIGHBOURS; specie++) {
+    live_count += counts[specie];
+
+    if (counts[specie] > most_common_count) {
+      most_common_count = counts[specie];
+      most_common = specie;
+    }
+  }
+
+  if (grid[x][y][z] != 0) { // if cell is alive
+    return (5 <= live_count && live_count <= 13) ? most_common : 0;
+  } else { // if cell is dead
+    return (7 <= live_count && live_count <= 10) ? most_common : 0;
+  }
+}
+
+void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
+  uint32_t sim = 1;
+  char ***old, ***new, ***tmp;
+
+  old = grid;
+  new = new_grid(n);
+
+  // uint32_t *neighbours = (uint32_t *)malloc(N_NEIGHBOURS * sizeof(int));
+  printf("Initial grid =================================\n");
+  debug(n, grid);
+
+  for (uint32_t gen = 0; gen < max_gen; gen++) {
+    for (uint32_t x = 0; x < n; x++) {
+      for (uint32_t y = 0; y < n; y++) {
+        for (uint32_t z = 0; z < n; z++) {
+
+          // get_neighbours(x, y, z, n, grid, neighbours);
+          // uint32_t count = count_live_neighbours(neighbours);
+          new[x][y][z] = next_inhabitant(x, y, z, n, old);
+        }
+
+        tmp = old;
+        old = new;
+        new = tmp;
+      }
+    }
+
+    printf("Grid after generation %d =====================\n", gen + 1);
+    debug(n, grid);
+  }
+
+  // free(neighbours);
 }
 
 int main(int argc, char *argv[]) {
   double exec_time;
   Args args = parse_args(argc, argv);
-  grid = gen_initial_grid(args.n, args.density, args.seed);
-  debug(args.n);
-  print_neighbours(get_neighbours(3, 2, 2, args.n));
+  char ***grid = gen_initial_grid(args.n, args.density, args.seed);
+
+  // uint32_t *neighbours = get_neighbours(3, 2, 2, args.n, grid);
+  // print_neighbours(neighbours);
+  // free(neighbours);
+
   exec_time = -omp_get_wtime();
-  simulation(args.n);
+  simulation(args.n, args.gen_count, grid);
   exec_time += omp_get_wtime();
   fprintf(stderr, "Took: %.1fs\n", exec_time);
 
