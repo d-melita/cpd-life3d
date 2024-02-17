@@ -6,7 +6,7 @@ ENDCOLOR="\e[0m"
 
 function die() {
 	cat <<EOF 
-Usage: test version
+Usage: test [version]
 
     - version: serial or omp or mpi
 
@@ -26,23 +26,29 @@ function compile() {
 
 # Parse args
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -gt 1 ]]; then
 	die
 fi
 
-if [[ $1 != serial ]] && [[ $1 != omp ]] && [[ $1 != mpi ]]; then
-	echo "Invalid version. Must be serial, omp or mpi."
-	die
+if [[ $# -eq 0 ]]; then
+	version=$(cat ../version);
+else
+	if [[ $1 != serial ]] && [[ $1 != omp ]] && [[ $1 != mpi ]]; then
+		echo "Invalid version. Must be serial, omp or mpi."
+		die
+	fi
+
+	version=$1
 fi
 
-version=$1
 
 # Compile code
 
 echo "Compiling life3d"
 compile
-# Run tests
 
+
+# Run tests
 
 total=0
 failed=0

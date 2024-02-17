@@ -17,3 +17,7 @@ src/*/life3d
 *.err
 *.diff
 *.myout
+
+## Python Notebooks
+plotting/.ipynb_checkpoints/*
+plotting/.tool-versions
