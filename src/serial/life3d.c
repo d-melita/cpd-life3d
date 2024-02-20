@@ -44,13 +44,13 @@ Args parse_args(int argc, char *argv[]) {
 
   args.n = atoi(argv[2]);
 
-  if (args.n == 0) {
+  if (args.n < 3) {
     printf("Invalid N provided: %s\n", argv[2]);
     help();
     exit(1);
   }
 
-  args.density = atof(argv[3]);
+  args.density = atoi(argv[3]);
   if (args.density < 0 || args.density > 1) {
     printf("Invalid density provided: %s\n", argv[2]);
     help();
@@ -58,12 +58,6 @@ Args parse_args(int argc, char *argv[]) {
   }
 
   args.seed = atoi(argv[4]);
-
-  if (args.seed == 0) {
-    printf("Invalid seed provided: %s\n", argv[4]);
-    help();
-    exit(1);
-  }
 
   return args;
 }
