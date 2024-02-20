@@ -50,7 +50,7 @@ Args parse_args(int argc, char *argv[]) {
     exit(1);
   }
 
-  args.density = atoi(argv[3]);
+  args.density = atof(argv[3]);
   if (args.density < 0 || args.density > 1) {
     printf("Invalid density provided: %s\n", argv[2]);
     help();
