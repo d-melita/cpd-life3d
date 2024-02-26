@@ -150,6 +150,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // debug(n, grid);
 
   // Compute initial stats
+  #pragma omp parallel for collapse(3) reduction(+: max_population[:N_NEIGHBOURS+1]) shared(old)
   for (uint32_t x = 0; x < n; x++) {
     for (uint32_t y = 0; y < n; y++) {
       for (uint32_t z = 0; z < n; z++) {
