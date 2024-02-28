@@ -98,13 +98,10 @@ for file in $(ls -- *.in); do
 
     if [[ $time_omp == 0.0 ]]; then
         echo "Cannot calculate speedup. Time omp is 0 seconds."
-        speedup="0"
         continue
     else
-        speedup=$(echo "scale=7; $time_serial / $time_omp" | bc)
+	    python3 -c "print('Speedup: ' + str($time_serial/$time_omp))"
     fi
-
-    echo "Speedup: $speedup"
 done
 
 printf "\nFailed $failed/$total\n"
