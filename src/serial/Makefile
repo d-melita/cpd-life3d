@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-O3 -fopenmp
-LDFLAGS=-O3 -fopenmp
+CFLAGS=-O2 -fopenmp
+LDFLAGS=-O2 -fopenmp
 
 life3d: life3d.o world_gen.o
 
