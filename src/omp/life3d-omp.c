@@ -88,8 +88,8 @@ int debug(uint32_t n, char ***grid) {
 inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
                             char ***grid) {
   // Compute stats for neighbours
-  uint32_t counts[N_NEIGHBOURS + 1];
-  memset(counts, 0, (N_NEIGHBOURS + 1) * sizeof(uint32_t));
+  uint32_t counts[N_SPECIES + 1];
+  memset(counts, 0, (N_SPECIES + 1) * sizeof(uint32_t));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
 
@@ -110,7 +110,7 @@ inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
   uint32_t most_common_count = 0;
   uint32_t live_count = 0;
 
-  for (uint32_t specie = 1; specie <= N_NEIGHBOURS; specie++) {
+  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
     live_count += counts[specie];
 
     if (counts[specie] > most_common_count) {
@@ -134,14 +134,14 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   uint32_t sim = 1;
   char ***old, ***new, ***tmp;
 
-  uint32_t peak_gen[N_NEIGHBOURS + 1];
-  memset(peak_gen, 0, sizeof(uint32_t) * (N_NEIGHBOURS + 1));
+  uint32_t peak_gen[N_SPECIES + 1];
+  memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
 
-  uint64_t max_population[N_NEIGHBOURS + 1];
-  memset(max_population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
+  uint64_t max_population[N_SPECIES + 1];
+  memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
-  uint64_t population[N_NEIGHBOURS + 1];
-  memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
+  uint64_t population[N_SPECIES + 1];
+  memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   old = grid;
   new = new_grid(n);
@@ -150,7 +150,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // debug(n, grid);
 
   // Compute initial stats
-  #pragma omp parallel for collapse(3) reduction(+: max_population[:N_NEIGHBOURS+1]) shared(old)
+  #pragma omp parallel for collapse(3) reduction(+: max_population[:N_SPECIES+1]) shared(old)
   for (uint32_t x = 0; x < n; x++) {
     for (uint32_t y = 0; y < n; y++) {
       for (uint32_t z = 0; z < n; z++) {
@@ -166,8 +166,8 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // }
 
   for (uint32_t gen = 0; gen < max_gen; gen++) {
-    memset(population, 0, sizeof(uint64_t) * (N_NEIGHBOURS + 1));
-    #pragma omp parallel for collapse(3) reduction(+: population[:N_NEIGHBOURS+1]) shared(old, new)
+    memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+    #pragma omp parallel for collapse(3) reduction(+: population[:N_SPECIES+1]) shared(old, new)
     for (uint32_t x = 0; x < n; x++) {
       for (uint32_t y = 0; y < n; y++) {
         for (uint32_t z = 0; z < n; z++) {
