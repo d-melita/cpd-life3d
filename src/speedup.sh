@@ -82,7 +82,7 @@ for file in $(ls -- *.in); do
     echo "Time serial: $time_serial seconds"
 
     # Run with omp version
-    ../omp/life3d $(cat $in) > $myout_omp 2> $err_omp
+    ../omp/life3d-omp $(cat $in) > $myout_omp 2> $err_omp
     diff $out $myout_omp > $diff_omp
 
     if [ -s $diff_omp ]; then
