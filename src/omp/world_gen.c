@@ -1,14 +1,8 @@
-/*
-* TEMPLATE
-* DO NOT EDIT 
-*/
-
+#include "world_gen.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define N_SPECIES 9
-
-extern char ***grid;
 unsigned int seed;
 
 void init_r4uni(int input_seed) { seed = input_seed + 987654321; }
@@ -23,8 +17,36 @@ float r4_uni() {
   return 0.5 + 0.2328306e-09 * (seed_in + (int)seed);
 }
 
-char ***gen_initial_grid(long long N, float density, int input_seed) {
+char ***new_grid(uint32_t N) {
   int x, y, z;
+  char ***grid = (char ***)malloc(N * sizeof(char **));
+  if (grid == NULL) {
+    printf("Failed to allocate matrix\n");
+    exit(1);
+  }
+
+  for (x = 0; x < N; x++) {
+    grid[x] = (char **)malloc(N * sizeof(char *));
+    if (grid[x] == NULL) {
+      printf("Failed to allocate matrix\n");
+      exit(1);
+    }
+    grid[x][0] = (char *)calloc(N * N, sizeof(char));
+    if (grid[x][0] == NULL) {
+      printf("Failed to allocate matrix\n");
+      exit(1);
+    }
+    for (y = 1; y < N; y++)
+      grid[x][y] = grid[x][0] + y * N;
+  }
+
+  return grid;
+}
+
+char ***gen_initial_grid(uint32_t N, float density, int input_seed) {
+  int x, y, z;
+
+  char ***grid = new_grid(N);
 
   grid = (char ***)malloc(N * sizeof(char **));
   if (grid == NULL) {

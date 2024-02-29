@@ -14,9 +14,9 @@ delivery/*
 src/*/life3d
 
 # Tests
-*.err
-*.diff
-*.myout
+*.err*
+*.diff*
+*.myout*
 
 ## Python Notebooks
 plotting/.ipynb_checkpoints/*

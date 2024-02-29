@@ -66,7 +66,11 @@ for file in $(ls -- *.in); do
 	diff=$name.diff
 
 	echo -n "$name:"
-	../$version/life3d $(cat $in) > $myout 2> $err
+	if [[ $version == omp || $version == mpi ]]; then
+		../$version/life3d-$version $(cat $in) > $myout 2> $err
+	else
+		../$version/life3d $(cat $in) > $myout 2> $err
+	fi
 	diff $out $myout > $diff
 
 	if [ -s $diff ]; then
