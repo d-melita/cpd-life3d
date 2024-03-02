@@ -19,7 +19,7 @@ EOF
 
 function compile() {
 	cd $version
-	make life3d || (echo "Compilation failed" && exit 1)
+	make || (echo "Compilation failed" && exit 1)
 	cd ..
 }
 
