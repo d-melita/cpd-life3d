@@ -17,8 +17,12 @@ EOF
 }
 
 function compile() {
-    cd $version
-    make life3d || (echo "Compilation failed" && exit 1)
+    cd serial
+    echo "Compiling serial version"
+    make clean && make|| (echo "Compilation failed" && exit 1)
+    cd ../omp
+    echo "Compiling omp version"
+    make clean && make|| (echo "Compilation failed" && exit 1)
     cd ..
 }
 
