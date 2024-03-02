@@ -11,7 +11,9 @@ delivery/*
 
 # C
 *.o
-src/*/life3d
+src/serial/life3d
+src/omp/life3d-omp
+src/mpi/life3d-mpi
 
 # Tests
 *.err*
