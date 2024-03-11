@@ -6,6 +6,9 @@
 
 #include "world_gen.h"
 
+uint64_t max_population[N_SPECIES + 1];
+uint32_t peak_gen[N_SPECIES + 1];
+
 inline int64_t get_index(int64_t value, uint32_t n) {
   if (value < 0) {
     return value + n;
@@ -44,7 +47,7 @@ Args parse_args(int argc, char *argv[]) {
 
   args.n = atoi(argv[2]);
 
-  if (args.n == 0) {
+  if (args.n < 3) {
     printf("Invalid N provided: %s\n", argv[2]);
     help();
     exit(1);
@@ -134,10 +137,8 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   uint32_t sim = 1;
   char ***old, ***new, ***tmp;
 
-  uint32_t peak_gen[N_SPECIES + 1];
   memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
 
-  uint64_t max_population[N_SPECIES + 1];
   memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   uint64_t population[N_SPECIES + 1];
@@ -150,7 +151,6 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // debug(n, grid);
 
   // Compute initial stats
-  #pragma omp parallel for collapse(3) reduction(+: max_population[:N_SPECIES+1]) shared(old)
   for (uint32_t x = 0; x < n; x++) {
     for (uint32_t y = 0; y < n; y++) {
       for (uint32_t z = 0; z < n; z++) {
@@ -201,11 +201,6 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
       }
     }
   }
-
-  // fprintf(stderr, "Simulation finished\n");
-  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
-    printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
-  }
 }
 
 int main(int argc, char *argv[]) {
@@ -219,6 +214,11 @@ int main(int argc, char *argv[]) {
 
   exec_time += omp_get_wtime();
   fprintf(stderr, "Took: %.1fs\n", exec_time);
+
+  // fprintf(stderr, "Simulation finished\n");
+  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
+    printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
+  }
 
   return EXIT_SUCCESS;
 }

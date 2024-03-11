@@ -6,11 +6,11 @@ ENDCOLOR="\e[0m"
 
 function die() {
     cat <<EOF
-Usage: test [version]
+Usage: speedup.sh [n]
 
-    - version: serial or omp or mpi
+    - n: number of OMP_THREADS to use in omp version
 
-Runs tests in test directory for specified version.
+Runs both serial and omp versions and compares the speedup.
 EOF
 
     exit 1
@@ -32,15 +32,10 @@ if [[ $# -gt 1 ]]; then
     die
 fi
 
-if [[ $# -eq 0 ]]; then
-    version=$(cat ../version);
+if [[ $# -eq 1 ]]; then
+    n=$1
 else
-    if [[ $1 != serial ]] && [[ $1 != omp ]] && [[ $1 != mpi ]]; then
-        echo "Invalid version. Must be serial, omp or mpi."
-        die
-    fi
-
-    version=$1
+    die  
 fi
 
 # Compile code
@@ -86,7 +81,7 @@ for file in $(ls -- *.in); do
     echo "Time serial: $time_serial seconds"
 
     # Run with omp version
-    ../omp/life3d-omp $(cat $in) > $myout_omp 2> $err_omp
+    OMP_NUM_THREADS=$n ../omp/life3d-omp $(cat $in) > $myout_omp 2> $err_omp
     diff $out $myout_omp > $diff_omp
 
     if [ -s $diff_omp ]; then
