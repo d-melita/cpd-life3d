@@ -91,7 +91,7 @@ int debug(uint32_t n, char ***grid) {
 inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
                             char ***grid) {
   // Compute stats for neighbours
-  uint32_t counts[N_SPECIES + 1];
+  uint32_t counts[N_SPECIES + 1];  // each entry is a counter for a specie with id = index, 0 - dead cells
   memset(counts, 0, (N_SPECIES + 1) * sizeof(uint32_t));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
@@ -134,12 +134,7 @@ inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
 }
 
 void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
-  uint32_t sim = 1;
   char ***old, ***new, ***tmp;
-
-  memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
-
-  memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   uint64_t population[N_SPECIES + 1];
   memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
@@ -150,7 +145,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // fprintf(stderr, "Initial grid =================================\n");
   // debug(n, grid);
 
-  // Compute initial stats
+  // Compute initial stats - gen 0
   for (uint32_t x = 0; x < n; x++) {
     for (uint32_t y = 0; y < n; y++) {
       for (uint32_t z = 0; z < n; z++) {
@@ -209,6 +204,10 @@ int main(int argc, char *argv[]) {
   char ***grid = gen_initial_grid(args.n, args.density, args.seed);
 
   exec_time = -omp_get_wtime();
+
+  memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
+
+  memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   simulation(args.n, args.gen_count, grid);
 
