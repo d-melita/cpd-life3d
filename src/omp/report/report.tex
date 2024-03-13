@@ -27,7 +27,7 @@
 		\\ [2.0cm]
 		\HRule{1.5pt} \\
 		\LARGE \textbf{Parallel and Distributed Computing
-		\HRule{2.0pt} \\ [0.6cm] \LARGE{Project Report - (Serial or OMP or MPI) Delivery} \vspace*{10\baselineskip}}
+		\HRule{2.0pt} \\ [0.6cm] \LARGE{Project Report - OpenMP Delivery} \vspace*{10\baselineskip}}
 		}
 \date{}
 \author{\textbf{Authors} \\ 
@@ -40,22 +40,69 @@
 
 % ------------------------------------------------------------------------------
 
-\section{Examples}
+\section{Introduciton}
 
-Section text
+For this stage of the project, we are asked to optimize our 
+serial version using OpenMP. We will be using the same 
+implementation as the previous stage, but we will be adding 
+OpenMP directives to parallelize the code. 
 
-\subsection{Pictures}
+\section{Approach Used}
 
-% \begin{figure}[htbp]
-%     \center
-%     \includegraphics[scale=0.06]{img/photo.jpg}
-%     \caption{Sydney, NSW}
-% \end{figure}
+The first step was to identify the parts of the code that 
+could be parallelized. By analyzing the code, we concluded that 
+the most time-consuming part was on the function \texttt{simulation}. 
+This function is responsible for simulating the multiple generations, 
+and therefore, it is very time consuming.
 
+Upon identifying the part of the code that could be parallelized, 
+we identified the the 2 loops that needed to be took care of in 
+order to speed up the code: the loop that calculates the initial state 
+of the grid and the loop that calculates the next generations of the grid. 
 
-\subsection{Citation}
+Additionally, we also used \textbf{VTune} to profile the code and 
+identify the most time-consuming parts of the code in order to ease 
+the parallelization process.
 
-This is a citation\cite{Eg}.
+\section{OpenMP Parallelization}
+To parallelize the code, we used the OpenMP directives, more specifically  
+the following directives: \texttt{parallel}, \texttt{for}, \texttt{collapse}, 
+\texttt{reduction}, and \texttt{single}.
+
+The \texttt{parallel} directive is used to create a team of threads 
+that will execute the code inside the block. In this block, we have 
+all the code mentioned above that we wanted to parallelize. 
+
+To parallelize the loops, we combined the \texttt{for}, \texttt{collapse}, 
+and \texttt{reduction} directives. The \texttt{for} directive is self-explanatory, 
+the \texttt{collapse} directive is used to collapse multiple loops into one, in 
+this case we used it to collapse the 3 loops since the grid is 3 dimentional.
+Finally, the \texttt{reduction} directive is used to perform a reduction 
+operation on the variables that are shared between the threads. In this case, we 
+used this directive with the \texttt{+} operator to sum the number of alive cells 
+of each specie in the grid. Since the parallelization we intended to do was having 
+multiple threads not only calulating the next generation of the grid, but also the 
+number of alive cells of each specie we used the \texttt{reduction} directive as it 
+makes a private copy for each thread of the variable specified and then combines 
+the results at the end, thus achieving the intended result. 
+
+Finally, we used the \texttt{single} directive to make sure that only one thread 
+executed parts of the code inside the block that shouldn't be parallelized. This 
+parts were responsible for swapping the pointers of the old and new grids and calculating the 
+stats of each generation and therefore, it was important to make sure that only 
+one thread executed this part of the code to achieve the correct results.
+
+\section{Results}
+
+To test the parallelized code, we used available input files the course's page 
+and the lab's machines. We were also careful to run this OpenMP version with the 
+environment variable \texttt{OMP\_NUM\_THREADS} set to number of physical cores 
+of the machine we were running the code on. 
+
+We compared the results of the parallelized code with the serial version and 
+concluded that the parallelized version was much faster than the serial version. 
+The speedup achieved was significant and very close to the ideal speedup, which 
+was the number of threads used.
 
 \newpage
 
