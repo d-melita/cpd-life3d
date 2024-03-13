@@ -163,7 +163,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   // Compute initial stats
   #pragma omp parallel
   {
-    #pragma omp for collapse(3) reduction(+:population[:N_SPECIES+1])
+    #pragma omp for collapse(3) reduction(+:max_population[:N_SPECIES+1])
     for (uint32_t x = 0; x < n; x++) {
       for (uint32_t y = 0; y < n; y++) {
         for (uint32_t z = 0; z < n; z++) {
