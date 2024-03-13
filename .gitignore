@@ -23,3 +23,9 @@ src/mpi/life3d-mpi
 ## Python Notebooks
 plotting/.ipynb_checkpoints/*
 plotting/.tool-versions
+
+# omp report
+
+src/omp/report.f*
+src/omp/report.out
+src/omp/report.synctex.gz
