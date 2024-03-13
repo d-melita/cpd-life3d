@@ -26,6 +26,6 @@ plotting/.tool-versions
 
 # omp report
 
-src/omp/report.f*
-src/omp/report.out
-src/omp/report.synctex.gz
+src/omp/report/report.f*
+src/omp/report/report.out
+src/omp/report/report.synctex.gz
