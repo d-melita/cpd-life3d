@@ -56,8 +56,8 @@ This function is responsible for simulating the multiple generations,
 and therefore, it is very time consuming.
 
 Upon identifying the part of the code that could be parallelized, 
-we identified the the 2 loops that needed to be took care of in 
-order to speed up the code: the loop that calculates the initial state 
+we identified the 2 nested loops that needed to be took care of in 
+order to speed up the code: the nested loop that calculates the initial statistics 
 of the grid and the loop that calculates the next generations of the grid. 
 
 Additionally, we also used \textbf{VTune} to profile the code and 
@@ -75,7 +75,7 @@ all the code mentioned above that we wanted to parallelize.
 
 To parallelize the loops, we combined the \texttt{for}, \texttt{collapse}, 
 and \texttt{reduction} directives. The \texttt{for} directive is self-explanatory, 
-the \texttt{collapse} directive is used to collapse multiple loops into one, in 
+the \texttt{collapse} directive is used to collapse nested loops into one, in 
 this case we used it to collapse the 3 loops since the grid is 3 dimentional.
 Finally, the \texttt{reduction} directive is used to perform a reduction 
 operation on the variables that are shared between the threads. In this case, we 
@@ -101,8 +101,8 @@ of the machine we were running the code on.
 
 We compared the results of the parallelized code with the serial version and 
 concluded that the parallelized version was much faster than the serial version. 
-The speedup achieved was significant and very close to the ideal speedup, which 
-was the number of threads used.
+The speedup achieved was significant and very close to the ideal speedup, the number of 
+physical cores.
 
 \newpage
 
