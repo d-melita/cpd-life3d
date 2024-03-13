@@ -161,7 +161,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   //           peak_gen[specie]);
   // }
 
-  for (uint32_t gen = 0; gen < max_gen; gen++) {
+  for (uint32_t gen = 1; gen <= max_gen; gen++) {
     memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
     #pragma omp parallel for collapse(3) reduction(+: population[:N_SPECIES+1])
     for (uint32_t x = 0; x < n; x++) {
@@ -193,7 +193,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
     for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
       if (max_population[specie] < population[specie]) {
         max_population[specie] = population[specie];
-        peak_gen[specie] = gen + 1;
+        peak_gen[specie] = gen;
       }
     }
   }
