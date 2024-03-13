@@ -7,19 +7,13 @@
 
 #include "world_gen.h"
 
-inline int64_t get_index(int64_t value, uint32_t n) {
-  if (value < 0) {
-    return value + n;
-  } else if (value >= n) {
-    return value - n;
-  } else {
-    return value;
-  }
+inline int32_t get_index(int32_t value, int32_t n) {
+  return (value + n) % n;
 }
 
 typedef struct args {
-  uint32_t gen_count;
-  uint32_t n;
+  int32_t gen_count;
+  int32_t n;
   float density;
   int seed;
 } Args;
@@ -92,32 +86,65 @@ int debug(uint32_t n, char ***grid) {
 /**
  * Computes new inhabitant for cell at position (x, y, z) of grid
  */
-inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
+char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
                             char ***grid) {
   // Compute stats for neighbours
-  uint32_t counts[N_SPECIES + 1];
-  memset(counts, 0, (N_SPECIES + 1) * sizeof(uint32_t));
+  char counts[N_SPECIES + 1];
+  char neighbour;
+  memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
+  
+  int32_t left = get_index(x + 1, n);
+  int32_t right = get_index(x - 1, n);
 
-  for (int64_t i = -NEIGHBOURS_RANGE; i <= NEIGHBOURS_RANGE; i++) {
-    for (int64_t j = -NEIGHBOURS_RANGE; j <= NEIGHBOURS_RANGE; j++) {
-      for (int64_t k = -NEIGHBOURS_RANGE; k <= NEIGHBOURS_RANGE; k++) {
-        if (i == 0 && j == 0 && k == 0) {
-          continue;
-        }
-        char neighbour =
-            grid[get_index(x + i, n)][get_index(y + j, n)][get_index(z + k, n)];
-        counts[neighbour]++;
-      }
-    }
-  }
+  int32_t front = get_index(y + 1, n);
+  int32_t back = get_index(y - 1, n);
 
-  uint32_t most_common = 0;
-  uint32_t most_common_count = 0;
-  uint32_t live_count = 0;
+  int32_t up = get_index(z + 1, n);
+  int32_t down = get_index(z - 1, n);
 
-  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
+  counts[grid[left][front][up]]++;
+  counts[grid[x][front][up]]++;
+  counts[grid[right][front][up]]++;
+
+  counts[grid[left][y][up]]++;
+  counts[grid[x][y][up]]++;
+  counts[grid[right][y][up]]++;
+
+  counts[grid[left][back][up]]++;
+  counts[grid[x][back][up]]++;
+  counts[grid[right][back][up]]++;
+
+  counts[grid[left][front][z]]++;
+  counts[grid[x][front][z]]++;
+  counts[grid[right][front][z]]++;
+
+  counts[grid[left][y][z]]++;
+  counts[grid[right][y][z]]++;
+
+  counts[grid[left][back][z]]++;
+  counts[grid[x][back][z]]++;
+  counts[grid[right][back][z]]++;
+
+  counts[grid[left][front][down]]++;
+  counts[grid[x][front][down]]++;
+  counts[grid[right][front][down]]++;
+
+  counts[grid[left][y][down]]++;
+  counts[grid[x][y][down]]++;
+  counts[grid[right][y][down]]++;
+
+  counts[grid[left][back][down]]++;
+  counts[grid[x][back][down]]++;
+  counts[grid[right][back][down]]++;
+
+  char current = grid[x][y][z];
+  char most_common = 0;
+  char most_common_count = 0;
+  char live_count = 0;
+
+  for (char specie = 1; specie <= N_SPECIES; specie++) {
     live_count += counts[specie];
 
     if (counts[specie] > most_common_count) {
@@ -129,7 +156,6 @@ inline char next_inhabitant(uint32_t x, uint32_t y, uint32_t z, uint32_t n,
   // fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n",
           // most_common, most_common_count, live_count);
 
-  char current = grid[x][y][z];
   if (current != 0) { // if cell is alive
     return (5 <= live_count && live_count <= 13) ? current : 0;
   } else { // if cell is dead
@@ -150,12 +176,14 @@ void finish() {
  }
 }
 
-void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
-  uint32_t sim = 1;
+void simulation(int32_t n, int32_t max_gen, char ***grid) {
   char ***old, ***new, ***tmp;
+  char new_val;
 
   old = grid;
   new = new_grid(n);
+
+  memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   // fprintf(stderr, "Initial grid =================================\n");
   // debug(n, grid);
@@ -164,33 +192,23 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
   #pragma omp parallel
   {
     #pragma omp for collapse(3) reduction(+:max_population[:N_SPECIES+1])
-    for (uint32_t x = 0; x < n; x++) {
-      for (uint32_t y = 0; y < n; y++) {
-        for (uint32_t z = 0; z < n; z++) {
+    for (int32_t x = 0; x < n; x++) {
+      for (int32_t y = 0; y < n; y++) {
+        for (int32_t z = 0; z < n; z++) {
           max_population[old[x][y][z]]++;
         }
       }
     }
 
-    // fprintf(stderr, "Initial stats ================================\n");
-    // for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
-    //   fprintf(stderr, "%d %ld %d\n", specie, max_population[specie],
-    //           peak_gen[specie]);
-    // }
+    for (int32_t gen = 0; gen < max_gen; gen++) {
 
-    #pragma omp single
-    {
-      memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
-    }
-
-    for (uint32_t gen = 0; gen < max_gen; gen++) {
-      #pragma omp for collapse(3) reduction(+:population[:N_SPECIES+1])
-      for (uint32_t x = 0; x < n; x++) {
-        for (uint32_t y = 0; y < n; y++) {
-          for (uint32_t z = 0; z < n; z++) {
-
-            new[x][y][z] = next_inhabitant(x, y, z, n, old);
-            population[new[x][y][z]]++;
+      #pragma omp for collapse(3) reduction(+:population[:N_SPECIES+1]) private(new_val)
+      for (int32_t x = 0; x < n; x++) {
+        for (int32_t y = 0; y < n; y++) {
+          for (int32_t z = 0; z < n; z++) {
+            new_val = next_inhabitant(x, y, z, n, old);
+            new[x][y][z] = new_val;
+            population[new_val]++;
             // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
             //         z, n, new[x][y][z]);
           }
@@ -203,7 +221,7 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
         old = new;
         new = tmp;
 
-        for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
+        for (char specie = 1; specie <= N_SPECIES; specie++) {
           if (max_population[specie] < population[specie]) {
             max_population[specie] = population[specie];
             peak_gen[specie] = gen + 1;
@@ -213,8 +231,6 @@ void simulation(uint32_t n, uint32_t max_gen, char ***grid) {
       }
     }
   }
-
-  
 }
 
 int main(int argc, char *argv[]) {
