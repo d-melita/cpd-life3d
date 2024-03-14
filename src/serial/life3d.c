@@ -105,38 +105,32 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   int32_t down = get_index(z - 1, n);
 
   counts[grid[left][front][up]]++;
-  counts[grid[x][front][up]]++;
-  counts[grid[right][front][up]]++;
-
-  counts[grid[left][y][up]]++;
-  counts[grid[x][y][up]]++;
-  counts[grid[right][y][up]]++;
-
-  counts[grid[left][back][up]]++;
-  counts[grid[x][back][up]]++;
-  counts[grid[right][back][up]]++;
-
   counts[grid[left][front][z]]++;
-  counts[grid[x][front][z]]++;
-  counts[grid[right][front][z]]++;
-
-  counts[grid[left][y][z]]++;
-  counts[grid[right][y][z]]++;
-
-  counts[grid[left][back][z]]++;
-  counts[grid[x][back][z]]++;
-  counts[grid[right][back][z]]++;
-
   counts[grid[left][front][down]]++;
-  counts[grid[x][front][down]]++;
-  counts[grid[right][front][down]]++;
-
+  counts[grid[left][y][up]]++;
+  counts[grid[left][y][z]]++;
   counts[grid[left][y][down]]++;
-  counts[grid[x][y][down]]++;
-  counts[grid[right][y][down]]++;
-
+  counts[grid[left][back][up]]++;
+  counts[grid[left][back][z]]++;
   counts[grid[left][back][down]]++;
+
+  counts[grid[x][front][up]]++;
+  counts[grid[x][front][z]]++;
+  counts[grid[x][front][down]]++;
+  counts[grid[x][y][up]]++;
+  counts[grid[x][y][down]]++;
+  counts[grid[x][back][up]]++;
+  counts[grid[x][back][z]]++;
   counts[grid[x][back][down]]++;
+
+  counts[grid[right][front][up]]++;
+  counts[grid[right][front][z]]++;
+  counts[grid[right][front][down]]++;
+  counts[grid[right][y][up]]++;
+  counts[grid[right][y][z]]++;
+  counts[grid[right][y][down]]++;
+  counts[grid[right][back][up]]++;
+  counts[grid[right][back][z]]++;
   counts[grid[right][back][down]]++;
 
   char current = grid[x][y][z];
