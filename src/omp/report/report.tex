@@ -104,6 +104,36 @@ concluded that the parallelized version was much faster than the serial version.
 The speedup achieved was significant and very close to the ideal speedup, the number of 
 physical cores.
 
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c c c c||} 
+	 \hline
+	 Version & Input 1 & Input 2 & Input 3 & Input 4  \\ [0.5ex] 
+	 \hline\hline
+	 serial & 9.4 & 14.9 & 48.3 & 114.7 \\ 
+	 omp & 1.7 & 2.7 & 8.6 & 20.6 \\ [1ex] 
+	 \hline
+	\end{tabular}
+	\caption{Times of execution, in seconds, of the serial and parallelized versions of the code.}
+	\label{table:1}
+\end{table}
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c c c c||} 
+	 \hline
+	 Input & gen\_count & N & density & seed  \\ [0.5ex] 
+	 \hline\hline
+	 1 & 1000 & 64 & 0.4 & 0 \\ 
+	 2 & 200 & 128 & 0.5 & 1000 \\
+	 3 & 10 & 512 & 0.4 & 0 \\ 
+	 4 & 3 & 1024 & 0.4 & 100 \\ [1ex] 
+	 \hline
+	\end{tabular}
+	\caption{Inputs used}
+	\label{table:2}
+\end{table}
+
 \newpage
 
 % ------------------------------------------------------------------------------
