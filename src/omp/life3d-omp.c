@@ -25,7 +25,18 @@ uint64_t max_population[N_SPECIES + 1];
 
 uint64_t population[N_SPECIES + 1];
 
-char ***old, ***new, ***tmp;
+char *old, *new, *tmp;
+
+int n2;
+
+int n3;
+
+int left_shift;
+int right_shift;
+int front_shift;
+int back_shift;
+int up_shift;
+int down_shift;
 
 void help() { fprintf(stderr, "\nUsage: life3d gen_count N density seed\n"); }
 
@@ -66,76 +77,84 @@ Args parse_args(int argc, char *argv[]) {
   return args;
 }
 
-int debug(uint32_t n, char ***grid) {
-  for (uint64_t x = 0; x < n; x++) {
-    fprintf(stderr, "Layer %ld:\n", x);
-    for (uint64_t y = 0; y < n; y++) {
-      for (uint64_t z = 0; z < n; z++) {
-        char value = grid[x][y][z];
-        if (value > 0) {
-          fprintf(stderr, "%d ", value);
-        } else {
-          fprintf(stderr, "  ");
-        }
-      }
-      fprintf(stderr, "\n");
-    }
-    fprintf(stderr, "\n");
-  }
-
-  return EXIT_SUCCESS;
-}
+// int debug(uint32_t n, char *grid) {
+//   for (uint64_t x = 0; x < n; x++) {
+//     fprintf(stderr, "Layer %ld:\n", x);
+//     for (uint64_t y = 0; y < n; y++) {
+//       for (uint64_t z = 0; z < n; z++) {
+//         char value = grid[x][y][z];
+//         if (value > 0) {
+//           fprintf(stderr, "%d ", value);
+//         } else {
+//           fprintf(stderr, "  ");
+//         }
+//       }
+//       fprintf(stderr, "\n");
+//     }
+//     fprintf(stderr, "\n");
+//   }
+//
+//   return EXIT_SUCCESS;
+// }
 
 /**
- * Computes new inhabitant for cell at position (x, y, z) of grid
+ * Computes new inhabitant for cell at position (x % (n**2), y % n, z) of grid
  */
 char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
-                            char ***grid) {
+                            char *grid) {
   // Compute stats for neighbours
   char counts[N_SPECIES + 1];
   char neighbour, current;
   memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
-  
-  int32_t left = get_index(x + 1, n);
-  int32_t right = get_index(x - 1, n);
 
-  int32_t front = get_index(y + 1, n);
-  int32_t back = get_index(y - 1, n);
+  // NOTE
+  // left_shift = - n2 + n3;
+  // right_shift = n2 + n3;
+  // front_shift = - n + n2;
+  // back_shift = + n + n2;
+  // up_shift = - 1 + n; 
+  // down_shift = + 1 + n;
 
-  int32_t up = get_index(z + 1, n);
-  int32_t down = get_index(z - 1, n);
+  int32_t left = (x + left_shift) % n3;
+  int32_t right = (x + right_shift) % n3;
 
-  counts[grid[left][front][up]]++;
-  counts[grid[left][front][z]]++;
-  counts[grid[left][front][down]]++;
-  counts[grid[left][y][up]]++;
-  counts[grid[left][y][z]]++;
-  counts[grid[left][y][down]]++;
-  counts[grid[left][back][up]]++;
-  counts[grid[left][back][z]]++;
-  counts[grid[left][back][down]]++;
+  int32_t front = (y + front_shift) % n2;
+  int32_t back = (y + back_shift) % n2;
 
-  counts[grid[x][front][up]]++;
-  counts[grid[x][front][z]]++;
-  counts[grid[x][front][down]]++;
-  counts[grid[x][y][up]]++;
-  current = grid[x][y][z];
-  counts[grid[x][y][down]]++;
-  counts[grid[x][back][up]]++;
-  counts[grid[x][back][z]]++;
-  counts[grid[x][back][down]]++;
+  int32_t up = (z + up_shift) % n;
+  int32_t down = (z + down_shift) % n;
 
-  counts[grid[right][front][up]]++;
-  counts[grid[right][front][z]]++;
-  counts[grid[right][front][down]]++;
-  counts[grid[right][y][up]]++;
-  counts[grid[right][y][z]]++;
-  counts[grid[right][y][down]]++;
-  counts[grid[right][back][up]]++;
-  counts[grid[right][back][z]]++;
-  counts[grid[right][back][down]]++;
+  counts[grid[left + front + up]]++;
+  counts[grid[left + front + z]]++;
+  counts[grid[left + front + down]]++;
+  counts[grid[left + y + up]]++;
+  counts[grid[left + y + z]]++;
+  counts[grid[left + y + down]]++;
+  counts[grid[left + back + up]]++;
+  counts[grid[left + back + z]]++;
+  counts[grid[left + back + down]]++;
+
+  counts[grid[x + front + up]]++;
+  counts[grid[x + front + z]]++;
+  counts[grid[x + front + down]]++;
+  counts[grid[x + y + up]]++;
+  current = grid[x + y + z];
+  counts[grid[x + y + down]]++;
+  counts[grid[x + back + up]]++;
+  counts[grid[x + back + z]]++;
+  counts[grid[x + back + down]]++;
+
+  counts[grid[right + front + up]]++;
+  counts[grid[right + front + z]]++;
+  counts[grid[right + front + down]]++;
+  counts[grid[right + y + up]]++;
+  counts[grid[right + y + z]]++;
+  counts[grid[right + y + down]]++;
+  counts[grid[right + back + up]]++;
+  counts[grid[right + back + z]]++;
+  counts[grid[right + back + down]]++;
 
   char most_common = 0;
   char most_common_count = 0;
@@ -174,7 +193,16 @@ void finish() {
  }
 }
 
-void simulation(int32_t n, int32_t max_gen, char ***grid) {
+void simulation(int32_t n, int32_t max_gen, char *grid) {
+  n2 = n * n;
+  n3 = n2 * n;
+  left_shift = - n2 + n3;
+  right_shift = n2 + n3;
+  front_shift = - n + n2;
+  back_shift = + n + n2;
+  up_shift = - 1 + n; 
+  down_shift = + 1 + n;
+
   char new_val;
   old = grid;
 
@@ -185,10 +213,10 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
   #pragma omp parallel
   {
     #pragma omp for collapse(3) reduction(+:max_population[:N_SPECIES+1])
-    for (int32_t x = 0; x < n; x++) {
-      for (int32_t y = 0; y < n; y++) {
+    for (int32_t x = 0; x < n3; x += n2) {
+      for (int32_t y = 0; y < n2; y += n) {
         for (int32_t z = 0; z < n; z++) {
-          max_population[old[x][y][z]]++;
+          max_population[old[x + y + z]]++;
         }
       }
     }
@@ -196,11 +224,11 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
     for (int32_t gen = 0; gen < max_gen; gen++) {
 
       #pragma omp for collapse(3) reduction(+:population[:N_SPECIES+1]) private(new_val)
-      for (int32_t x = 0; x < n; x++) {
-        for (int32_t y = 0; y < n; y++) {
+      for (int32_t x = 0; x < n3; x += n2) {
+        for (int32_t y = 0; y < n2; y += n) {
           for (int32_t z = 0; z < n; z++) {
             new_val = next_inhabitant(x, y, z, n, old);
-            new[x][y][z] = new_val;
+            new[x + y + z] = new_val;
             population[new_val]++;
             // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
             //         z, n, new[x][y][z]);
@@ -229,7 +257,7 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
 int main(int argc, char *argv[]) {
   double exec_time;
   Args args = parse_args(argc, argv);
-  char ***grid = gen_initial_grid(args.n, args.density, args.seed);
+  char *grid = gen_initial_grid(args.n, args.density, args.seed);
 
   prepare(args.n);
 
