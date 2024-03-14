@@ -138,13 +138,58 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   char most_common_count = 0;
   char live_count = 0;
 
-  for (char specie = 1; specie <= N_SPECIES; specie++) {
-    live_count += counts[specie];
+  live_count += counts[1];
+  if (counts[1] > most_common_count) {
+    most_common_count = counts[1];
+    most_common = 1;
+  }
 
-    if (counts[specie] > most_common_count) {
-      most_common_count = counts[specie];
-      most_common = specie;
-    }
+  live_count += counts[2];
+  if (counts[2] > most_common_count) {
+    most_common_count = counts[2];
+    most_common = 2;
+  }
+
+  live_count += counts[3];
+  if (counts[3] > most_common_count) {
+    most_common_count = counts[3];
+    most_common = 3;
+  }
+
+  live_count += counts[4];
+  if (counts[4] > most_common_count) {
+    most_common_count = counts[4];
+    most_common = 4;
+  }
+
+  live_count += counts[5];
+  if (counts[5] > most_common_count) {
+    most_common_count = counts[5];
+    most_common = 5;
+  }
+
+  live_count += counts[6];
+  if (counts[6] > most_common_count) {
+    most_common_count = counts[6];
+    most_common = 6;
+  }
+
+  live_count += counts[7];
+  if (counts[7] > most_common_count) {
+    most_common_count = counts[7];
+    most_common = 7;
+  }
+
+  live_count += counts[8];
+  if (counts[8] > most_common_count) {
+    most_common_count = counts[8];
+    most_common = 8;
+  }
+
+  live_count += counts[9];
+  if (counts[9] > most_common_count) {
+    most_common_count = counts[9];
+    most_common = 9;
   }
 
   // fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n",
@@ -209,11 +254,49 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
     old = new;
     new = tmp;
 
-    for (char specie = 1; specie <= N_SPECIES; specie++) {
-      if (max_population[specie] < population[specie]) {
-        max_population[specie] = population[specie];
-        peak_gen[specie] = gen + 1;
-      }
+    if (max_population[1] < population[1]) {
+      max_population[1] = population[1];
+      peak_gen[1] = gen + 1;
+    }
+
+    if (max_population[2] < population[2]) {
+      max_population[2] = population[2];
+      peak_gen[2] = gen + 1;
+    }
+
+    if (max_population[3] < population[3]) {
+      max_population[3] = population[3];
+      peak_gen[3] = gen + 1;
+    }
+
+    if (max_population[4] < population[4]) {
+      max_population[4] = population[4];
+      peak_gen[4] = gen + 1;
+    }
+    
+    if (max_population[5] < population[5]) {
+      max_population[5] = population[5];
+      peak_gen[5] = gen + 1;
+    }
+
+    if (max_population[6] < population[6]) {
+      max_population[6] = population[6];
+      peak_gen[6] = gen + 1;
+    }
+
+    if (max_population[7] < population[7]) {
+      max_population[7] = population[7];
+      peak_gen[7] = gen + 1;
+    }
+
+    if (max_population[8] < population[8]) {
+      max_population[8] = population[8];
+      peak_gen[8] = gen + 1;
+    }
+
+    if (max_population[9] < population[9]) {
+      max_population[9] = population[9];
+      peak_gen[9] = gen + 1;
     }
 
     memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
