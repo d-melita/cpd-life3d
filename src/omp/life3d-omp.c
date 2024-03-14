@@ -210,7 +210,7 @@ void simulation(int32_t n, int32_t max_gen, char *grid) {
   // debug(n, grid);
 
   // Compute initial stats
-  #pragma omp parallel
+  #pragma omp parallel num_threads(6)
   {
     #pragma omp for collapse(3) reduction(+:max_population[:N_SPECIES+1])
     for (int32_t x = 0; x < n3; x += n2) {
@@ -242,12 +242,51 @@ void simulation(int32_t n, int32_t max_gen, char *grid) {
         old = new;
         new = tmp;
 
-        for (char specie = 1; specie <= N_SPECIES; specie++) {
-          if (max_population[specie] < population[specie]) {
-            max_population[specie] = population[specie];
-            peak_gen[specie] = gen + 1;
-          }
+        if (max_population[1] < population[1]) {
+          max_population[1] = population[1];
+          peak_gen[1] = gen + 1;
         }
+
+        if (max_population[2] < population[2]) {
+          max_population[2] = population[2];
+          peak_gen[2] = gen + 1;
+        }
+
+        if (max_population[3] < population[3]) {
+          max_population[3] = population[3];
+          peak_gen[3] = gen + 1;
+        }
+
+        if (max_population[4] < population[4]) {
+          max_population[4] = population[4];
+          peak_gen[4] = gen + 1;
+        }
+        
+        if (max_population[5] < population[5]) {
+          max_population[5] = population[5];
+          peak_gen[5] = gen + 1;
+        }
+
+        if (max_population[6] < population[6]) {
+          max_population[6] = population[6];
+          peak_gen[6] = gen + 1;
+        }
+
+        if (max_population[7] < population[7]) {
+          max_population[7] = population[7];
+          peak_gen[7] = gen + 1;
+        }
+
+        if (max_population[8] < population[8]) {
+          max_population[8] = population[8];
+          peak_gen[8] = gen + 1;
+        }
+
+        if (max_population[9] < population[9]) {
+          max_population[9] = population[9];
+          peak_gen[9] = gen + 1;
+        }
+
         memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
       }
     }
