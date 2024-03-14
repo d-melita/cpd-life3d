@@ -42,10 +42,13 @@
 
 \section{Introduciton}
 
-For this stage of the project, we are asked to optimize our 
+For this stage of the project, we were asked to optimize our 
 serial version using OpenMP. We will be using the same 
 implementation as the previous stage, but we will be adding 
 OpenMP directives to parallelize the code. 
+
+\section{Serial Version}
+TODO: Briefly describe the serial version of the code ???
 
 \section{Approach Used}
 
@@ -94,15 +97,19 @@ one thread executed this part of the code to achieve the correct results.
 
 \section{Results}
 
-To test the parallelized code, we used available input files the course's page 
-and the lab's machines. We were also careful to run this OpenMP version with the 
+To test the parallelized code, we used the input files available on the course's page 
+and the lab's machines. We were also careful to run the OpenMP version with the 
 environment variable \texttt{OMP\_NUM\_THREADS} set to number of physical cores 
 of the machine we were running the code on. 
 
 We compared the results of the parallelized code with the serial version and 
-concluded that the parallelized version was much faster than the serial version. 
-The speedup achieved was significant and very close to the ideal speedup, the number of 
+concluded that the parallelized version was much faster than the serial one. 
+The speedup achieved was significant and close to the ideal speedup, the number of 
 physical cores.
+
+In the following table, we present the times of execution of the serial and parallelized 
+versions of the code against the inputs available on the course page as well as the achieved 
+speedup.
 
 \begin{table}[h!]
 	\centering
@@ -111,7 +118,8 @@ physical cores.
 	 Version & Input 1 & Input 2 & Input 3 & Input 4  \\ [0.5ex] 
 	 \hline\hline
 	 serial & 9.4 & 14.9 & 48.3 & 114.7 \\ 
-	 omp & 1.7 & 2.7 & 8.6 & 20.6 \\ [1ex] 
+	 omp & 1.7 & 2.7 & 8.6 & 20.6 \\ 
+	 speedup & 5.5 & 5.5 & 5.6 & 5.6 \\ [1ex] 
 	 \hline
 	\end{tabular}
 	\caption{Times of execution, in seconds, of the serial and parallelized versions of the code.}
@@ -122,7 +130,7 @@ physical cores.
 	\centering
 	\begin{tabular}{||c c c c c||} 
 	 \hline
-	 Input & gen\_count & N & density & seed  \\ [0.5ex] 
+	 Input & gen\_count & $N$ & density & seed  \\ [0.5ex] 
 	 \hline\hline
 	 1 & 1000 & 64 & 0.4 & 0 \\ 
 	 2 & 200 & 128 & 0.5 & 1000 \\
