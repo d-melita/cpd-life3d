@@ -260,10 +260,6 @@ int main(int argc, char *argv[]) {
 
   exec_time = -omp_get_wtime();
 
-  memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
-
-  memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
-
   simulation(args.n, args.gen_count, grid);
 
   exec_time += omp_get_wtime();
@@ -271,11 +267,6 @@ int main(int argc, char *argv[]) {
   finish();
 
   fprintf(stderr, "Took: %.1fs\n", exec_time);
-
-  // fprintf(stderr, "Simulation finished\n");
-  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
-    printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
-  }
 
   return EXIT_SUCCESS;
 }
