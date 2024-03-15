@@ -50,6 +50,10 @@ OpenMP directives to parallelize the code.
 \section{Serial Version}
 TODO: Briefly describe the serial version of the code ???
 
+Prepare and finish outside the simulation function
+
+Loop unroll(explain this approach)
+
 \section{Approach Used}
 
 The first step was to identify the parts of the code that 
@@ -61,7 +65,7 @@ and therefore, it is very time consuming.
 Upon identifying the part of the code that could be parallelized, 
 we identified the 2 nested loops that needed to be took care of in 
 order to speed up the code: the nested loop that calculates the initial statistics 
-of the grid and the loop that calculates the next generations of the grid. 
+of the grid and the loop that calculates the next generation of the grid. 
 
 Additionally, we also used \textbf{VTune} to profile the code and 
 identify the most time-consuming parts of the code in order to ease 
@@ -74,25 +78,25 @@ the following directives: \texttt{parallel}, \texttt{for}, \texttt{collapse},
 
 The \texttt{parallel} directive is used to create a team of threads 
 that will execute the code inside the block. In this block, we have 
-all the code mentioned above that we wanted to parallelize. 
+all the code mentioned above that we wanted to parallelize.
 
 To parallelize the loops, we combined the \texttt{for}, \texttt{collapse}, 
-and \texttt{reduction} directives. The \texttt{for} directive is self-explanatory, 
-the \texttt{collapse} directive is used to collapse nested loops into one, in 
-this case we used it to collapse the 3 loops since the grid is 3 dimentional.
+and \texttt{reduction} directives. The \texttt{for} directive is used to parallelize
+different iterations of the loop among the threads. The \texttt{collapse} directive is used to collapse 
+nested loops into one, in this case we used it to collapse the 3 loops since the grid is 3 dimentional.
 Finally, the \texttt{reduction} directive is used to perform a reduction 
 operation on the variables that are shared between the threads. In this case, we 
-used this directive with the \texttt{+} operator to sum the number of alive cells 
-of each specie in the grid. Since the parallelization we intended to do was having 
+used this directive with the \texttt{+} operator to sum the number of cells of each 
+specie in the new generations grid. Since the parallelization we intended to do was having 
 multiple threads not only calulating the next generation of the grid, but also the 
-number of alive cells of each specie we used the \texttt{reduction} directive as it 
+number of cells of each specie we used the \texttt{reduction} directive as it 
 makes a private copy for each thread of the variable specified and then combines 
 the results at the end, thus achieving the intended result. 
 
 Finally, we used the \texttt{single} directive to make sure that only one thread 
 executed parts of the code inside the block that shouldn't be parallelized. This 
-parts were responsible for swapping the pointers of the old and new grids and calculating the 
-stats of each generation and therefore, it was important to make sure that only 
+parts were responsible for swapping the pointers of the old and new grids and updating 
+the maximum population of each specie and therefore, it was important to make sure that only 
 one thread executed this part of the code to achieve the correct results.
 
 \section{Results}
