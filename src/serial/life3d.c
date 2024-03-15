@@ -24,6 +24,8 @@ uint64_t max_population[N_SPECIES + 1];
 
 uint64_t population[N_SPECIES + 1];
 
+char ***old, ***new, ***tmp;
+
 void help() { fprintf(stderr, "\nUsage: life3d gen_count N density seed\n"); }
 
 Args parse_args(int argc, char *argv[]) {
@@ -91,18 +93,19 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   // Compute stats for neighbours
   char counts[N_SPECIES + 1];
   char neighbour;
+  char current;
   memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
   
-  int32_t left = get_index(x + 1, n);
-  int32_t right = get_index(x - 1, n);
+  int32_t left = (x - 1 + n) % n;
+  int32_t right = (x + 1 + n) % n;
 
-  int32_t front = get_index(y + 1, n);
-  int32_t back = get_index(y - 1, n);
+  int32_t front = (y - 1 + n) % n;
+  int32_t back = (y + 1 + n) % n;
 
-  int32_t up = get_index(z + 1, n);
-  int32_t down = get_index(z - 1, n);
+  int32_t up = (z - 1 + n) % n;
+  int32_t down = (z + 1 + n) % n;
 
   counts[grid[left][front][up]]++;
   counts[grid[left][front][z]]++;
@@ -118,6 +121,7 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   counts[grid[x][front][z]]++;
   counts[grid[x][front][down]]++;
   counts[grid[x][y][up]]++;
+  current = grid[x][y][z];
   counts[grid[x][y][down]]++;
   counts[grid[x][back][up]]++;
   counts[grid[x][back][z]]++;
@@ -133,63 +137,17 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   counts[grid[right][back][z]]++;
   counts[grid[right][back][down]]++;
 
-  char current = grid[x][y][z];
   char most_common = 0;
   char most_common_count = 0;
   char live_count = 0;
 
-  live_count += counts[1];
-  if (counts[1] > most_common_count) {
-    most_common_count = counts[1];
-    most_common = 1;
-  }
+  for (char specie = 1; specie <= N_SPECIES; specie++) {
+    live_count += counts[specie];
 
-  live_count += counts[2];
-  if (counts[2] > most_common_count) {
-    most_common_count = counts[2];
-    most_common = 2;
-  }
-
-  live_count += counts[3];
-  if (counts[3] > most_common_count) {
-    most_common_count = counts[3];
-    most_common = 3;
-  }
-
-  live_count += counts[4];
-  if (counts[4] > most_common_count) {
-    most_common_count = counts[4];
-    most_common = 4;
-  }
-
-  live_count += counts[5];
-  if (counts[5] > most_common_count) {
-    most_common_count = counts[5];
-    most_common = 5;
-  }
-
-  live_count += counts[6];
-  if (counts[6] > most_common_count) {
-    most_common_count = counts[6];
-    most_common = 6;
-  }
-
-  live_count += counts[7];
-  if (counts[7] > most_common_count) {
-    most_common_count = counts[7];
-    most_common = 7;
-  }
-
-  live_count += counts[8];
-  if (counts[8] > most_common_count) {
-    most_common_count = counts[8];
-    most_common = 8;
-  }
-
-  live_count += counts[9];
-  if (counts[9] > most_common_count) {
-    most_common_count = counts[9];
-    most_common = 9;
+    if (counts[specie] > most_common_count) {
+      most_common_count = counts[specie];
+      most_common = specie;
+    }
   }
 
   // fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n",
@@ -202,7 +160,8 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   }
 }
 
-void prepare() {
+void prepare(int n) {
+  new = new_grid(n);
   memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
   memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
   memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
@@ -216,13 +175,8 @@ void finish() {
 }
 
 void simulation(int32_t n, int32_t max_gen, char ***grid) {
-  char ***old, ***new, ***tmp;
   char new_val;
-
   old = grid;
-  new = new_grid(n);
-
-  memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 
   // fprintf(stderr, "Initial grid =================================\n");
   // debug(n, grid);
@@ -308,7 +262,7 @@ int main(int argc, char *argv[]) {
   Args args = parse_args(argc, argv);
   char ***grid = gen_initial_grid(args.n, args.density, args.seed);
 
-  prepare();
+  prepare(args.n);
 
   exec_time = -omp_get_wtime();
 
