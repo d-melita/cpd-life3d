@@ -99,8 +99,8 @@ one thread executed this part of the code to achieve the correct results.
 
 To test the parallelized code, we used the input files available on the course's page 
 and the lab's machines. We were also careful to run the OpenMP version with the 
-environment variable \texttt{OMP\_NUM\_THREADS} set to number of physical cores 
-of the machine we were running the code on. 
+environment variable \texttt{OMP\_NUM\_THREADS} set to 1, 2, 4, and 6 in order to correctly 
+test the speedup of our program. 
 
 We compared the results of the parallelized code with the serial version and 
 concluded that the parallelized version was much faster than the serial one. 
@@ -109,17 +109,21 @@ physical cores.
 
 In the following table, we present the times of execution of the serial and parallelized 
 versions of the code against the inputs available on the course page as well as the achieved 
-speedup.
+speedup. This results were obtained by running both the serial and omp versions on the 
+\textbf{lab3p8} machine, which has 6 physical cores. The omp version was ran with the 
+\texttt{OMP\_NUM\_THREADS} environment flag set to 1, 2, 4, and 6.
 
 \begin{table}[h!]
 	\centering
-	\begin{tabular}{||c c c c c||} 
+	\begin{tabular}{||c c c c c c c||} 
 	 \hline
-	 Version & Input 1 & Input 2 & Input 3 & Input 4  \\ [0.5ex] 
+	 Version & Number of Threads & Input 1 & Input 2 & Input 3 & Input 4 & Speedup\\ [0.5ex] 
 	 \hline\hline
-	 serial & 9.4 & 14.9 & 48.3 & 114.7 \\ 
-	 omp & 1.7 & 2.7 & 8.6 & 20.6 \\ 
-	 speedup & 5.5 & 5.5 & 5.6 & 5.6 \\ [1ex] 
+	 serial & $N/A$ & 9.5 & 15.0 & 48.7 & 115.5 & $N/A$ \\ 
+	 omp & 1 & 9.4 & 15.0 & 48.3 & 115.2 & 1.0 \\ 
+	 omp & 2 & 4.8 & 7.6 & 24.6 & 58.8 & 1.98 \\
+	 omp & 4 & 2.5 & 3.9 & 12.6 & 30.1 & 3.84 \\
+	 omp & 6 & 1.7 & 2.7 & 8.6 & 20.6 & 5.61 \\ [1ex] 
 	 \hline
 	\end{tabular}
 	\caption{Times of execution, in seconds, of the serial and parallelized versions of the code.}
@@ -141,6 +145,18 @@ speedup.
 	\caption{Inputs used}
 	\label{table:2}
 \end{table}
+
+In the graph below, we present the speedup achieved by the parallelized version 
+when running on different number of threads. As we can see, the speedup achieved 
+is significant and close to the ideal speedup. Our tests were run multiple times 
+and the results were consistent.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/speedup-threads.png}
+    \caption{Speedup achieved by the parallelized version when running on different number of threads.}
+    \label{fig:name}
+\end{figure}
 
 \newpage
 
