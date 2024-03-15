@@ -48,11 +48,21 @@ implementation as the previous stage, but we will be adding
 OpenMP directives to parallelize the code. 
 
 \section{Serial Version}
-TODO: Briefly describe the serial version of the code ???
 
-Prepare and finish outside the simulation function
+The serial version of the code was already implemented in the previous
+stage of the project. However, we modified some parts of the code because 
+we realized that this would make it more optimized.
 
-Loop unroll(explain this approach)
+First, we created a \texttt{prepare} function that initializes a new grid and 
+the vectors common to all generations, and a \texttt{finish} function that 
+prints the results. These functions were called outside the \texttt{simulation} 
+function, as they are not counted in the execution time.
+
+The original code utilizes nested loops to iterate over a specified neighborhood 
+range, checking each neighboring cell and updating counts accordingly. 
+However, the modified version directly accesses specific neighboring cells without 
+the need for nested loops. Each neighbor of the current cell is explicitly accessed 
+and counted. This change reduced redundant calculations and improved data locality.
 
 \section{Approach Used}
 
