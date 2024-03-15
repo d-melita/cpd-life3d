@@ -8,8 +8,6 @@
 
 #include "world_gen.h"
 
-
-
 typedef struct args {
   int32_t gen_count;
   int32_t n;
@@ -95,7 +93,6 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
-  //
 
   int32_t left = (x - 1 + n) % n;
   int32_t right = (x + 1 + n) % n;

@@ -7,10 +7,6 @@
 
 #include "world_gen.h"
 
-inline int32_t get_index(int32_t value, int32_t n) {
-  return (value + n) % n;
-}
-
 typedef struct args {
   int32_t gen_count;
   int32_t n;
@@ -92,12 +88,11 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
                             char ***grid) {
   // Compute stats for neighbours
   char counts[N_SPECIES + 1];
-  char neighbour;
-  char current;
+  char neighbour, current;
   memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
   // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
-  
+
   int32_t left = (x - 1 + n) % n;
   int32_t right = (x + 1 + n) % n;
 
@@ -191,7 +186,6 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
   }
 
   for (int32_t gen = 0; gen < max_gen; gen++) {
-
     for (int32_t x = 0; x < n; x++) {
       for (int32_t y = 0; y < n; y++) {
         for (int32_t z = 0; z < n; z++) {
