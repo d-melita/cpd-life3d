@@ -48,11 +48,6 @@
 The goal for this stage is to parallelize the first version of the
 \texttt{life3d} program in the shared-memory model using OpenMP.
 
-% For this stage of the project, we were asked to optimize our 
-% serial version using OpenMP. We will be using the same 
-% implementation as the previous stage, but we will be adding 
-% OpenMP directives to parallelize the code. 
-
 \section{Serial Version}
 
 The serial version is the basis for the subsequent implementation, therefore
@@ -80,28 +75,7 @@ benchmarking is slightly modified. The relevant changes are the following:
 		\texttt{for} loop, which was unrolled manually
 \end{itemize}
 
-% and function that initializes a new grid and 
-% the vectors common to all generations, and a \texttt{finish} function that 
-% prints the results. These functions were called outside the \texttt{simulation} 
-% function, as they are not counted in the execution time.
-
-% The serial version of the code was already implemented in the previous
-% stage of the project. However, we modified some parts of the code because 
-% we realized that this would make it more optimized.
-
-% The original code utilizes nested loops to iterate over a specified neighborhood 
-% range, checking each neighboring cell and updating counts accordingly. 
-% However, the modified version directly accesses specific neighboring cells without 
-% the need for nested loops. Each neighbor of the current cell is explicitly accessed 
-% and counted. This change reduced redundant calculations and improved data locality.
-
 \section{Approach Used}
-
-% The first step was to identify the parts of the code that 
-% could be parallelized. By analyzing the code, we concluded that 
-% the most time-consuming part was on the function \texttt{simulation}. 
-% This function is responsible for simulating the multiple generations, 
-% and therefore, it is very time consuming.
 
 To decide on which part of the code should be paralelized, Linux's \texttt{perf}
 tool was used as follows:
@@ -130,25 +104,11 @@ As a summary, the parallelized algorithm will follow the same structure as befor
 - for each generation, a fully parallelized grid update, at the end of which
 the threads synchronize to compute the aggregate (which is done by a single thread).
 
-% Upon identifying the part of the code that could be parallelized, 
-% we identified the 2 nested loops that needed to be took care of in 
-% order to speed up the code: the nested loop that calculates the initial statistics 
-% of the grid and the loop that calculates the next generation of the grid.
-
-% Additionally, we also used \textbf{VTune} to profile the code and 
-% identify the most time-consuming parts of the code in order to ease 
-% the parallelization process.
-
 \section{OpenMP Parallelization}
 
 As expected, the code parallelization described previously was implemented
-by using OpenMP directives (in particular \texttt{parallel}, \texttt{for}, \texttt{collapse}, 
+ using OpenMP directives (in particular \texttt{parallel}, \texttt{for}, \texttt{collapse}, 
 \texttt{reduction}, and \texttt{single}).
-
-% To parallelize the code, we used the OpenMP directives, more specifically  
-% the following directives: \texttt{parallel}, \texttt{for}, \texttt{collapse}, 
-% \texttt{reduction}, and \texttt{single}.
-
 
 The \texttt{parallel} directive is used to create a team of threads 
 that will execute the code inside the block. To achieve the desired
@@ -160,15 +120,6 @@ the end, the \texttt{for} is paired with a \texttt{reduction} clause. As expecte
 the latter specifies \texttt{+} as the aggregation operation and the count
 array as the variable to aggregate on.
 
-% Finally, the \texttt{reduction} directive is used to perform a reduction 
-% operation on the variables that are shared between the threads. In this case, we 
-% used this directive with the \texttt{+} operator to sum the number of cells of each 
-% specie in the new generations grid. Since the parallelization we intended to do was having 
-% multiple threads not only calulating the next generation of the grid, but also the 
-% number of cells of each specie we used the \texttt{reduction} directive as it 
-% makes a private copy for each thread of the variable specified and then combines 
-% the results at the end, thus achieving the intended result. 
-
 The use of a plain \texttt{for} might however create a load imbalance as it
 only splits iterations for the outer-most loop. As an example, consider $n=1000$
 and a team of 3 threads. If work-splitting is done only at the outermost level,
@@ -176,13 +127,7 @@ the final split will be $333 \times 1000^2$, $333 \times 1000^2$ and $334 \times
 (i.e. the last thread gets an extra million entries). To ensure this doesn't happen,
 \texttt{collapse(3)} is used.
 
-// TODO: add a little benchmark to ensure that this is actually useful.
-
-% and \texttt{reduction} directives. The \texttt{for} directive is used to parallelize
-% different iterations of the loop among the threads. The \texttt{collapse} directive is used to collapse 
-% nested loops into one, in this case we used it to collapse the 3 loops since the grid is 3 dimentional.
-
-As already mentioned, after each grid update there a quick set of tasks that
+As already mentioned, after each grid update there's a quick set of tasks that
 need to be performed - swapping the pointers of the old and new grids and updating 
 the maximum population of each specie. These are in general very quick operations
 and that would raise concurrency issues if done in parallel. For this reason,
@@ -192,11 +137,8 @@ represent any extra synchronization that might hinder the performance as threads
 had to synchronize anyway at the end of the \texttt{for} loop to compute the
 aggregate statistics.
 
-\dsanote{Don't like this phrasing}
-A interesting implementation detail is where to add the \texttt{for} and \texttt{parallel}
-directives. Two options were considered:
-
-\dsanote{Don't love having this as bullets, what do you think?}
+A relevant aspect of implementation is determining the placement of the \texttt{for} and 
+\texttt{parallel} directives. Two solutions were considered:
 
 \begin{itemize}
 	\itemsep -0.2em
@@ -212,29 +154,24 @@ Since the thread team is created at the start of the parallel section, the intui
 favors the second option as it avoids spawning threads in each iteration.
 Despite this, the experiments performed on both versions
 (Table~\ref{omp-directive-choice}) show that a very high generation count and a
-very low value for $n$ is required to find relevant performance difference.
+very low value for $n$ is required to find relevant performance differences. 
+For this reason, the second option was chosen.
 
 \begin{table}[h!]
 	\centering
-	\begin{tabular}{||c c c c c c c||} 
+	\begin{tabular}{| c c c c c c||} 
 	 \hline
-	 Input & gen\_count & $N$ & density & seed & Option 1 execution time & Option 2 execution time \\ [0.5ex] 
+	 gen\_count & $N$ & density & seed & Option 1 execution time & Option 2 execution time \\ [0.5ex] 
 	 \hline\hline
-	 1 & 100000000 & 4 & 0.4 & 0 & 216.9s & 209.8s \\ 
-	 1 & 10000000 & 4 & 0.4 & 0 & 21.8s & 20.9s \\ 
-	 1 & 1000000 & 4 & 0.4 & 0 & 2.2s & 2.1s\\
-	 1 & 100000 & 16 & 0.4 & 0 & 3s & 3s\\ [1ex] 
+	 100000000 & 4 & 0.4 & 0 & 216.9s & 209.8s \\ 
+	 10000000 & 4 & 0.4 & 0 & 21.8s & 20.9s \\ 
+	 1000000 & 4 & 0.4 & 0 & 2.2s & 2.1s\\
+	 100000 & 16 & 0.4 & 0 & 3s & 3s\\ [1ex] 
 	 \hline
 	\end{tabular}
 	\caption{Execution time for both choices of directives}
 	\label{omp-directive-choice}
 \end{table}
-
-% Finally, we used the \texttt{single} directive to make sure that only one thread 
-% executed parts of the code inside the block that shouldn't be parallelized. This 
-% parts were responsible for swapping the pointers of the old and new grids and updating 
-% the maximum population of each specie and therefore, it was important to make sure that only 
-% one thread executed this part of the code to achieve the correct results.
 
 \section{Results}
 
@@ -242,11 +179,6 @@ To benchmark the parallelized code, the input values presented in Table~\ref{inp
 were used. The programs were executed in the labs machines, by setting
 \texttt{OMP\_NUM\_THREADS} to 1, 2, 4 and 6 in order to correctly test the
 speedup of our program for different core counts.
-
-% We compared the results of the parallelized code with the serial version and 
-% concluded that the parallelized version was much faster than the serial one. 
-% The speedup achieved was significant and close to the ideal speedup, the number of 
-% physical cores.
 
 \begin{table}[h!]
 	\centering
@@ -264,19 +196,13 @@ speedup of our program for different core counts.
 	\label{input-values}
 \end{table}
 
-The number of threads, the size of the grid and the number of generations
+The number of threads, the size of the grid, and the number of generations
 was varied and for each configuration, 5 runs were executed on the \texttt{lab3p8}
 machine. Table~\ref{execution-times} shows the mean value for the execution
 time for each configuration and the mean speedup across the tested inputs for
 each version. To better understand, the implementation's scalability, a plot
 depicting difference between best possible speedup and empirically observed
 speedup is also plotted in Image~\ref{speedup}.
-
-% In the following table, we present the times of execution of the serial and parallelized 
-% versions of the code against the inputs available on the course page as well as the achieved 
-% speedup. This results were obtained by running both the serial and omp versions on the 
-% \textbf{lab3p8} machine, which has 6 physical cores. The omp version was ran with the 
-% \texttt{OMP\_NUM\_THREADS} environment flag set to 1, 2, 4, and 6.
 
 \begin{table}[h!]
 	\centering
@@ -309,7 +235,13 @@ observation is according to Amdahl's law and thus the expected behaviour.
 
 To further understand what percentage of the initial program was being parallelized,
 the observed behaviour was compared against the one predicted by Amdahl's law
-for different portions of the parallelized program.
+for different portions of the parallelized program. The formula used for this 
+purpose is the following ($p$ is the portion of the code that is parallelized and $t$ is 
+the number of threads): 
+
+\begin{equation}
+	S = \frac{1}{(1-p) + \frac{p}{t}}
+\end{equation}
 
 \begin{table}[h!]
 	\centering
@@ -335,12 +267,6 @@ around 95\% of code is in the parallelized section. This slight difference
 can be attributed both to some inacurracy on \texttt{perf}'s part and to the
 fact that Amdahl's law is a simplification and misses some factors such as the
 overhead for parallelization.
-
-% In the graph below, we present the speedup achieved by the parallelized version 
-% when running on different number of threads. As we can see, the speedup achieved 
-% is significant and close to the ideal speedup.
-
-// TODO: explain cache measurements (tbh don't know if this is still relevant)
 
 \section{Appendix A}
 
