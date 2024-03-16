@@ -13,7 +13,9 @@ report_template:
 		rm -f *.log *.aux *.out
 
 report_%: 
+	# Runs twice on purpose (to resolve back references)
 	cd src/$*/report && \
+		pdflatex -enable-write18 report.tex && \
 		pdflatex -enable-write18 report.tex && \
 		rm -f *.log *.aux *.out
 
