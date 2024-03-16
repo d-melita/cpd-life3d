@@ -88,21 +88,24 @@ perf report -g
 
 \end{lstlisting}
 
-\texttt{perf}'s report (which can be found in greater detail in Appendix A) shows
-that for large problems, most time (more than $95\%$ of the CPU cycles for a
-representative run in RNL's lab3p7 machine) is spent in the \texttt{next\_inhabitant}
-function (which is part of the grid update step in the algorithm). These results
-showed that the focus of the parallelization efforts should be the loop that
+\texttt{perf}'s analysis showed that most time was spent in the \texttt{next\_inhabitant}
+function, which is part of the grid update step in the algorithm. For example,
+in a run in lab3p7 machine for the input presented previously, more than $95\%$
+of the CPU cycles were spent in this function (more details can for this run
+can be found in Appendix A).
+
+These results showed that the focus of the parallelization efforts should be the loop that
 computes the new grid state. To achieve this in the
-shared-memory model, the loop iterations were split among a team of
-threads and each thread was assigned a section of the space for which it should compute the
-new inhabitants. Additionally, each thread keeps a private histogram for the count for each
-specie in its section of the grid. This private histogram must be aggregated
-at the end and used to update the global maximum count values. Obviously, this
-work cannot be parallelized in any useful way, so it's not divided among the threads.
+shared-memory model, the loop iterations are divided among a team of
+threads, and each thread is assigned a section of the space for which it should compute the
+new inhabitants. Additionally, each thread maintains a private histogram to track the count
+of each species within its grid section. This private histogram must be aggregated
+at the end and used to update the global maximum count values. Obviously, the
+work cannot be parallelized in any productive way, so it's not divided among the threads.
+
 As a summary, the parallelized algorithm will follow the same structure as before
 - for each generation, a fully parallelized grid update, at the end of which
-the threads synchronize to compute the aggregate (which is done by a single thread).
+the threads synchronize to compute the aggregate values (which is done by a single thread).
 
 \section{OpenMP Parallelization}
 
@@ -111,33 +114,34 @@ As expected, the code parallelization described previously was implemented
 \texttt{reduction}, and \texttt{single}).
 
 The \texttt{parallel} directive is used to create a team of threads 
-that will execute the code inside the block. To achieve the desired
+that will execute the code to parallelize. To achieve the desired
 work sharing amongst the threads, the \texttt{for} directive was added
-to both to the initial loop that goes through the space to compute the initial
-statistics as well as to the grid updating loop. To automate the creation
+both to the initial loop that goes through the space to compute the initial
+statistics and to the grid updating loop. To automate the creation
 of a private array for each thread's count and the sum of all histograms at
 the end, the \texttt{for} is paired with a \texttt{reduction} clause. As expected,
 the latter specifies \texttt{+} as the aggregation operation and the count
 array as the variable to aggregate on.
 
 The use of a plain \texttt{for} might however create a load imbalance as it
-only splits iterations for the outer-most loop. As an example, consider $n=1000$
+only splits iterations for the outermost loop. As an example, consider $n=1000$
 and a team of 3 threads. If work-splitting is done only at the outermost level,
-the final split will be $333 \times 1000^2$, $333 \times 1000^2$ and $334 \times 1000^2$
+the final split will assign $333 \times 1000^2$, $333 \times 1000^2$, and $334 \times 1000^2$
+iterations to the first, second, and third threads, respectively
 (i.e. the last thread gets an extra million entries). To ensure this doesn't happen,
 \texttt{collapse(3)} is used.
 
 As already mentioned, after each grid update there's a quick set of tasks that
 need to be performed - swapping the pointers of the old and new grids and updating 
-the maximum population of each specie. These are in general very quick operations
-and that would raise concurrency issues if done in parallel. For this reason,
-\texttt{single} is used to ensure that a single thread performs the required
-changes to prepare for the next iteration. It should be noted that this doesn't
-represent any extra synchronization that might hinder the performance as threads
-had to synchronize anyway at the end of the \texttt{for} loop to compute the
-aggregate statistics.
+the maximum population of each species. These are in general very quick operations
+and that would raise concurrency issues if done in parallel, without earning
+any performance improvements. For this reason, \texttt{single} is used to ensure
+that a single thread performs the required changes to prepare for the next iteration.
+It should be noted that this doesn't represent an extra synchronization overhead that might
+hinder the performance as threads already had to synchronize at the end of the \texttt{for}
+loop to compute the aggregate statistics.
 
-A relevant aspect of implementation is determining the placement of the \texttt{for} and 
+A relevant aspect of the implementation is determining the placement of the \texttt{for} and 
 \texttt{parallel} directives. Two solutions were considered:
 
 \begin{itemize}
@@ -155,7 +159,8 @@ favors the second option as it avoids spawning threads in each iteration.
 Despite this, the experiments performed on both versions
 (Table~\ref{omp-directive-choice}) show that a very high generation count and a
 very low value for $n$ is required to find relevant performance differences. 
-For this reason, the second option was chosen.
+In any case, the second option proved to be just as suitable, if not more so,
+than the first, and thus was selected.
 
 \begin{table}[h!]
 	\centering
@@ -176,9 +181,9 @@ For this reason, the second option was chosen.
 \section{Results}
 
 To benchmark the parallelized code, the input values presented in Table~\ref{input-values}
-were used. The programs were executed in the labs machines, by setting
-\texttt{OMP\_NUM\_THREADS} to 1, 2, 4 and 6 in order to correctly test the
-speedup of our program for different core counts.
+were used. The programs were executed in the labs machines, and
+\texttt{OMP\_NUM\_THREADS} was set to 1, 2, 4, and 6 to test the parallel version using
+different core counts.
 
 \begin{table}[h!]
 	\centering
@@ -197,12 +202,12 @@ speedup of our program for different core counts.
 \end{table}
 
 The number of threads, the size of the grid, and the number of generations
-was varied and for each configuration, 5 runs were executed on the \texttt{lab3p8}
+was varied, and for each configuration, 5 runs were executed on the lab3p8
 machine. Table~\ref{execution-times} shows the mean value for the execution
 time for each configuration and the mean speedup across the tested inputs for
-each version. To better understand, the implementation's scalability, a plot
+each version. To better understand the implementation's scalability, a plot
 depicting difference between best possible speedup and empirically observed
-speedup is also plotted in Image~\ref{speedup}.
+speedup is also presented in Image~\ref{speedup}.
 
 \begin{table}[h!]
 	\centering
