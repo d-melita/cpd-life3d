@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <omp.h>
+#include <mpi.h>
 
 #include "world_gen.h"
 
@@ -66,6 +67,27 @@ int debug(uint32_t n, char ***grid) {
     fprintf(stderr, "Layer %ld:\n", x);
     for (uint64_t y = 0; y < n; y++) {
       for (uint64_t z = 0; z < n; z++) {
+        char value = grid[x][y][z];
+        if (value > 0) {
+          fprintf(stderr, "%d ", value);
+        } else {
+          fprintf(stderr, "  ");
+        }
+      }
+      fprintf(stderr, "\n");
+    }
+    fprintf(stderr, "\n");
+  }
+
+  return EXIT_SUCCESS;
+}
+
+int debug_partitions(uint32_t start, uint32_t end, char ***grid, int rank, int N) {
+  fprintf(stderr, "Rank %d: Start %d, End %d\n", rank, start, end);
+  for (uint64_t x = start; x <= end; x++) {
+    fprintf(stderr, "Layer %ld:\n", x);
+    for (uint64_t y = 0; y < N; y++) {
+      for (uint64_t z = 0; z < N; z++) {
         char value = grid[x][y][z];
         if (value > 0) {
           fprintf(stderr, "%d ", value);
@@ -162,111 +184,195 @@ void prepare(int n) {
   memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
 }
 
-void finish() {
+void finish(int rank) {
   // fprintf(stderr, "Simulation finished\n");
-  for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
-    printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
- }
+  if (rank == 0) {
+    for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
+      printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
+    }
+  }
 }
 
-void simulation(int32_t n, int32_t max_gen, char ***grid) {
+void simulation(int32_t n, int32_t max_gen, char ***grid, int rank, int num_procs) {
   char new_val;
   old = grid;
+
+  // Calculate the portion of the grid for each MPI process
+  int32_t start = rank * (n / num_procs);
+  int32_t end = (rank == num_procs - 1) ? n : ((rank + 1) * (n / num_procs));
+
+  int32_t next_rank = (rank + 1) % num_procs;
+  int32_t prev_rank = (rank - 1 + num_procs) % num_procs;
+
+  //printf("rank: %d, start: %d, end: %d, next_rank: %d, prev_rank: %d\n", rank, start, end, next_rank, prev_rank); // this is correct, already confirmed (dgm)
+
+  // print partitioning
+  // debug_partitions(start, end, grid, rank, n); - they are correct, already confirmed (dgm)
+
+
+  // Temporary buffers to store boundary data
+  char *recv_buffer_start = malloc(n * n * sizeof(char));
+  char *recv_buffer_end = malloc(n * n * sizeof(char));
 
   // fprintf(stderr, "Initial grid =================================\n");
   // debug(n, grid);
 
   // Compute initial stats
-  for (int32_t x = 0; x < n; x++) {
+  uint64_t local_max_population[N_SPECIES + 1];
+  memset(local_max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+  for (int32_t x = start; x < end; x++) {
     for (int32_t y = 0; y < n; y++) {
       for (int32_t z = 0; z < n; z++) {
-        max_population[old[x][y][z]]++;
+        local_max_population[old[x][y][z]]++;
       }
     }
   }
 
+  // Synchronize MPI processes to ensure all initial stats are computed
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  // Gather initial statistics from all MPI processes to task 0
+  MPI_Reduce(local_max_population, max_population, N_SPECIES + 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+
   for (int32_t gen = 0; gen < max_gen; gen++) {
-    for (int32_t x = 0; x < n; x++) {
+    // share the grid with all MPI processes
+
+    // i need to receive and send values from and to tasks with id = rank - 1 and id = rank + 1
+    // if rank - 1 == -1, then i need to talkwith the last task, if rank + 1 == num_procs, then i need to talk with the first task
+    // i need to add this values to my local grid to compute the next generation
+
+    // send and receive data from the previous and next tasks
+    // fprintf(stderr, "Rank %d sending data to %d and %d\n", rank, prev_rank, next_rank);
+    // Initiate non-blocking sends
+    MPI_Request send_request_start, send_request_end;
+    MPI_Isend(&old[start][0][0], n * n, MPI_CHAR, prev_rank, rank, MPI_COMM_WORLD, &send_request_start);
+    MPI_Isend(&old[end - 1][0][0], n * n, MPI_CHAR, next_rank, rank, MPI_COMM_WORLD, &send_request_end);
+
+    // Allocate buffers for receiving
+    char* recv_buffer_start = (char*)malloc(n * n * sizeof(char));
+    char* recv_buffer_end = (char*)malloc(n * n * sizeof(char));
+
+    // Initiate non-blocking receives
+    MPI_Request recv_request_start, recv_request_end;
+    MPI_Irecv(recv_buffer_end, n * n, MPI_CHAR, next_rank, next_rank, MPI_COMM_WORLD, &recv_request_end);
+    MPI_Irecv(recv_buffer_start, n * n, MPI_CHAR, prev_rank, prev_rank, MPI_COMM_WORLD, &recv_request_start);
+
+    // Wait for the completion of both sends and receives
+    MPI_Wait(&send_request_start, MPI_STATUS_IGNORE);
+    MPI_Wait(&send_request_end, MPI_STATUS_IGNORE);
+    MPI_Wait(&recv_request_start, MPI_STATUS_IGNORE);
+    MPI_Wait(&recv_request_end, MPI_STATUS_IGNORE);
+    // copy the received data to the grid
+    for (int32_t y = 0; y < n; y++) {
+      for (int32_t z = 0; z < n; z++) {
+        int real_start = start == 0 ? n : start;  // this is done to avoid negative indexes and "have" a continuous grid
+        int real_end = end == n ? 0 : end;
+        old[real_start-1][y][z] = recv_buffer_start[y * n + z];
+        old[real_end][y][z] = recv_buffer_end[y * n + z];
+      }
+    }
+
+    uint64_t local_population[N_SPECIES + 1];
+    memset(local_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+    for (int32_t x = start; x < end; x++) {
       for (int32_t y = 0; y < n; y++) {
         for (int32_t z = 0; z < n; z++) {
           new_val = next_inhabitant(x, y, z, n, old);
           new[x][y][z] = new_val;
-          population[new_val]++;
+          local_population[new_val]++;
           // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
           //         z, n, new[x][y][z]);
         }
       }
     }
 
+    // Synchronize MPI processes after each generation
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Gather population statistics from all MPI processes to task 0
+    MPI_Reduce(local_population, population, N_SPECIES + 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+
     tmp = old;
     old = new;
     new = tmp;
 
-    if (max_population[1] < population[1]) {
-      max_population[1] = population[1];
-      peak_gen[1] = gen + 1;
-    }
+    if (!rank) {
+        if (max_population[1] < population[1]) {
+        max_population[1] = population[1];
+        peak_gen[1] = gen + 1;
+      }
 
-    if (max_population[2] < population[2]) {
-      max_population[2] = population[2];
-      peak_gen[2] = gen + 1;
-    }
+      if (max_population[2] < population[2]) {
+        max_population[2] = population[2];
+        peak_gen[2] = gen + 1;
+      }
 
-    if (max_population[3] < population[3]) {
-      max_population[3] = population[3];
-      peak_gen[3] = gen + 1;
-    }
+      if (max_population[3] < population[3]) {
+        max_population[3] = population[3];
+        peak_gen[3] = gen + 1;
+      }
 
-    if (max_population[4] < population[4]) {
-      max_population[4] = population[4];
-      peak_gen[4] = gen + 1;
-    }
-    
-    if (max_population[5] < population[5]) {
-      max_population[5] = population[5];
-      peak_gen[5] = gen + 1;
-    }
+      if (max_population[4] < population[4]) {
+        max_population[4] = population[4];
+        peak_gen[4] = gen + 1;
+      }
+      
+      if (max_population[5] < population[5]) {
+        max_population[5] = population[5];
+        peak_gen[5] = gen + 1;
+      }
 
-    if (max_population[6] < population[6]) {
-      max_population[6] = population[6];
-      peak_gen[6] = gen + 1;
-    }
+      if (max_population[6] < population[6]) {
+        max_population[6] = population[6];
+        peak_gen[6] = gen + 1;
+      }
 
-    if (max_population[7] < population[7]) {
-      max_population[7] = population[7];
-      peak_gen[7] = gen + 1;
-    }
+      if (max_population[7] < population[7]) {
+        max_population[7] = population[7];
+        peak_gen[7] = gen + 1;
+      }
 
-    if (max_population[8] < population[8]) {
-      max_population[8] = population[8];
-      peak_gen[8] = gen + 1;
-    }
+      if (max_population[8] < population[8]) {
+        max_population[8] = population[8];
+        peak_gen[8] = gen + 1;
+      }
 
-    if (max_population[9] < population[9]) {
-      max_population[9] = population[9];
-      peak_gen[9] = gen + 1;
+      if (max_population[9] < population[9]) {
+        max_population[9] = population[9];
+        peak_gen[9] = gen + 1;
+      }
     }
-
     memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+    free(recv_buffer_start);
+    free(recv_buffer_end);
   }
 }
 
 int main(int argc, char *argv[]) {
+  int id, p;
   double exec_time;
+  MPI_Init (&argc, &argv);
+  MPI_Comm_rank (MPI_COMM_WORLD, &id);
+  MPI_Comm_size (MPI_COMM_WORLD, &p);
   Args args = parse_args(argc, argv);
   char ***grid = gen_initial_grid(args.n, args.density, args.seed);
 
   prepare(args.n);
 
-  exec_time = -omp_get_wtime();
+  MPI_Barrier (MPI_COMM_WORLD);
+  exec_time = - MPI_Wtime();
 
-  simulation(args.n, args.gen_count, grid);
+  simulation(args.n, args.gen_count, grid, id, p);
 
-  exec_time += omp_get_wtime();
+  exec_time += MPI_Wtime();
   
-  finish();
+  MPI_Barrier (MPI_COMM_WORLD);
+  finish(id);
 
-  fprintf(stderr, "Took: %.1fs\n", exec_time);
+  if (!id) {
+    fprintf(stderr, "Took: %.1fs\n", exec_time);
+  }
 
+  MPI_Finalize();
   return EXIT_SUCCESS;
 }
