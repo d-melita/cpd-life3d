@@ -66,10 +66,12 @@ for file in $(ls -- *.in); do
 	diff=$name.diff
 
 	echo -n "$name:"
-	if [[ $version == omp || $version == mpi ]]; then
-		../$version/life3d-$version $(cat $in) > $myout 2> $err
+	if [[ $version == omp ]]; then
+    	../$version/life3d-$version $(cat $in) > $myout 2> $err
+	elif [[ $version == mpi ]]; then
+	    mpirun -np 4 ../$version/life3d-mpi $(cat $in) > $myout 2> $err
 	else
-		../$version/life3d $(cat $in) > $myout 2> $err
+	    ../$version/life3d $(cat $in) > $myout 2> $err
 	fi
 	diff $out $myout > $diff
 
