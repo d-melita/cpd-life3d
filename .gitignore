@@ -29,3 +29,6 @@ plotting/.tool-versions
 src/omp/report/report.f*
 src/omp/report/report.out
 src/omp/report/report.synctex.gz
+
+# vscode
+.vscode/*
