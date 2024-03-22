@@ -8,21 +8,21 @@ function die() {
     cat <<EOF
 Usage: speedup.sh [n]
 
-    - n: number of OMP_THREADS to use in omp version
+    - n: number of mpi_THREADS to use in mpi version
 
-Runs both serial and omp versions and compares the speedup.
+Runs both serial and mpi versions and cmpiares the speedup.
 EOF
 
     exit 1
 }
 
-function compile() {
+function cmpiile() {
     cd serial
-    echo "Compiling serial version"
-    make clean && make|| (echo "Compilation failed" && exit 1)
-    cd ../omp
-    echo "Compiling omp version"
-    make clean && make|| (echo "Compilation failed" && exit 1)
+    echo "Cmpiiling serial version"
+    make clean && make|| (echo "Cmpiilation failed" && exit 1)
+    cd ../mpi
+    echo "Cmpiiling mpi version"
+    make clean && make|| (echo "Cmpiilation failed" && exit 1)
     cd ..
 }
 
@@ -38,10 +38,10 @@ else
     die  
 fi
 
-# Compile code
+# Cmpiile code
 
-echo "Compiling life3d"
-compile
+echo "Cmpiiling life3d"
+cmpiile
 
 # Run tests
 
@@ -57,11 +57,11 @@ for file in $(ls -- *.in); do
     in=$name.in
     out=$name.out
     err_serial=$name.err_serial
-    err_omp=$name.err_omp
+    err_mpi=$name.err_mpi
     myout_serial=$name.myout_serial
-    myout_omp=$name.myout_omp
+    myout_mpi=$name.myout_mpi
     diff_serial=$name.diff_serial
-    diff_omp=$name.diff_omp
+    diff_mpi=$name.diff_mpi
 
     printf "\n$name:\n"
 
@@ -80,26 +80,26 @@ for file in $(ls -- *.in); do
     time_serial=$(tail -n 1 $err_serial | grep -oE "[0-9]+(\.[0-9]+)?")
     echo "Time serial: $time_serial seconds"
 
-    # Run with omp version
-    OMP_NUM_THREADS=$n ../omp/life3d-omp $(cat $in) > $myout_omp 2> $err_omp
-    diff $out $myout_omp > $diff_omp
+    # Run with mpi version
+    mpirun -np $n ../mpi/life3d-mpi $(cat $in) > $myout_mpi 2> $err_mpi
+    diff $out $myout_mpi > $diff_mpi
 
-    if [ -s $diff_omp ]; then
-        echo -e "$RED omp failed$ENDCOLOR"
+    if [ -s $diff_mpi ]; then
+        echo -e "$RED mpi failed$ENDCOLOR"
         failed=$((failed+1))
     else
-        echo -e "$GREEN omp success$ENDCOLOR"
+        echo -e "$GREEN mpi success$ENDCOLOR"
     fi
 
     # Calculate time and display speedup
-    time_omp=$(tail -n 1 $err_omp | grep -oE "[0-9]+(\.[0-9]+)?")
-    echo "Time omp: $time_omp seconds"
+    time_mpi=$(tail -n 1 $err_mpi | grep -oE "[0-9]+(\.[0-9]+)?")
+    echo "Time mpi: $time_mpi seconds"
 
-    if [[ $time_omp == 0.0 ]]; then
-        echo "Cannot calculate speedup. Time omp is 0 seconds."
+    if [[ $time_mpi == 0.0 ]]; then
+        echo "Cannot calculate speedup. Time mpi is 0 seconds."
         continue
     else
-	    python3 -c "print('Speedup: ' + str($time_serial/$time_omp))"
+	    python3 -c "print('Speedup: ' + str($time_serial/$time_mpi))"
     fi
 done
 
