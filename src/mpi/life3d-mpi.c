@@ -198,21 +198,16 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, int rank, int num_proc
   old = grid;
 
   // Calculate the portion of the grid for each MPI process
-  int32_t start = rank * (n / num_procs);
-  int32_t end = (rank == num_procs - 1) ? n : ((rank + 1) * (n / num_procs));
+  int32_t start = (rank * n) / num_procs;
+  int32_t end = (rank == num_procs - 1) ? n : (((rank + 1) * n) / num_procs);
 
   int32_t next_rank = (rank + 1) % num_procs;
   int32_t prev_rank = (rank - 1 + num_procs) % num_procs;
 
-  //printf("rank: %d, start: %d, end: %d, next_rank: %d, prev_rank: %d\n", rank, start, end, next_rank, prev_rank); // this is correct, already confirmed (dgm)
+  //printf("rank: %d, start: %d, end: %d, next_rank: %d, prev_rank: %d\n", rank, start, end, next_rank, prev_rank);
 
   // print partitioning
-  // debug_partitions(start, end, grid, rank, n); - they are correct, already confirmed (dgm)
-
-
-  // Temporary buffers to store boundary data
-  char *recv_buffer_start = malloc(n * n * sizeof(char));
-  char *recv_buffer_end = malloc(n * n * sizeof(char));
+  // debug_partitions(start, end, grid, rank, n);
 
   // fprintf(stderr, "Initial grid =================================\n");
   // debug(n, grid);
@@ -228,51 +223,31 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, int rank, int num_proc
     }
   }
 
-  // Synchronize MPI processes to ensure all initial stats are computed
-  MPI_Barrier(MPI_COMM_WORLD);
-
   // Gather initial statistics from all MPI processes to task 0
   MPI_Reduce(local_max_population, max_population, N_SPECIES + 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
+  uint64_t local_population[N_SPECIES + 1];
+
   for (int32_t gen = 0; gen < max_gen; gen++) {
-    // share the grid with all MPI processes
-
-    // i need to receive and send values from and to tasks with id = rank - 1 and id = rank + 1
-    // if rank - 1 == -1, then i need to talkwith the last task, if rank + 1 == num_procs, then i need to talk with the first task
-    // i need to add this values to my local grid to compute the next generation
-
     // send and receive data from the previous and next tasks
-    // fprintf(stderr, "Rank %d sending data to %d and %d\n", rank, prev_rank, next_rank);
     // Initiate non-blocking sends
     MPI_Request send_request_start, send_request_end;
     MPI_Isend(&old[start][0][0], n * n, MPI_CHAR, prev_rank, rank, MPI_COMM_WORLD, &send_request_start);
     MPI_Isend(&old[end - 1][0][0], n * n, MPI_CHAR, next_rank, rank, MPI_COMM_WORLD, &send_request_end);
 
-    // Allocate buffers for receiving
-    char* recv_buffer_start = (char*)malloc(n * n * sizeof(char));
-    char* recv_buffer_end = (char*)malloc(n * n * sizeof(char));
+    int real_start = start == 0 ? n : start;  // this is done to avoid negative indexes and "have" a continuous grid
+    int real_end = end == n ? 0 : end;
 
-    // Initiate non-blocking receives
+    // Initiate non-blocking receives directly into the old array
     MPI_Request recv_request_start, recv_request_end;
-    MPI_Irecv(recv_buffer_end, n * n, MPI_CHAR, next_rank, next_rank, MPI_COMM_WORLD, &recv_request_end);
-    MPI_Irecv(recv_buffer_start, n * n, MPI_CHAR, prev_rank, prev_rank, MPI_COMM_WORLD, &recv_request_start);
+    MPI_Irecv(&old[real_start - 1][0][0], n * n, MPI_CHAR, prev_rank, prev_rank, MPI_COMM_WORLD, &recv_request_start);
+    MPI_Irecv(&old[real_end][0][0], n * n, MPI_CHAR, next_rank, next_rank, MPI_COMM_WORLD, &recv_request_end);
 
-    // Wait for the completion of both sends and receives
-    MPI_Wait(&send_request_start, MPI_STATUS_IGNORE);
-    MPI_Wait(&send_request_end, MPI_STATUS_IGNORE);
-    MPI_Wait(&recv_request_start, MPI_STATUS_IGNORE);
-    MPI_Wait(&recv_request_end, MPI_STATUS_IGNORE);
-    // copy the received data to the grid
-    for (int32_t y = 0; y < n; y++) {
-      for (int32_t z = 0; z < n; z++) {
-        int real_start = start == 0 ? n : start;  // this is done to avoid negative indexes and "have" a continuous grid
-        int real_end = end == n ? 0 : end;
-        old[real_start-1][y][z] = recv_buffer_start[y * n + z];
-        old[real_end][y][z] = recv_buffer_end[y * n + z];
-      }
-    }
+    MPI_Request requests[4] = {send_request_start, send_request_end, recv_request_start, recv_request_end};
+    MPI_Status statuses[4];
 
-    uint64_t local_population[N_SPECIES + 1];
+    MPI_Waitall(4, requests, statuses); 
+
     memset(local_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
     for (int32_t x = start; x < end; x++) {
       for (int32_t y = 0; y < n; y++) {
@@ -285,9 +260,6 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, int rank, int num_proc
         }
       }
     }
-
-    // Synchronize MPI processes after each generation
-    MPI_Barrier(MPI_COMM_WORLD);
 
     // Gather population statistics from all MPI processes to task 0
     MPI_Reduce(local_population, population, N_SPECIES + 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -343,8 +315,6 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, int rank, int num_proc
       }
     }
     memset(population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
-    free(recv_buffer_start);
-    free(recv_buffer_end);
   }
 }
 
