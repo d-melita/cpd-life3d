@@ -204,7 +204,7 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
   old = grid;
   double reduce_time;
   double computation_time;
-  double communication_time;
+  //double communication_time;
 
   MPI_Request requests[4];
   MPI_Status status[4];
@@ -215,8 +215,9 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
   // fprintf(stderr, "[%d] Neighbour prev: %d\n", me, neighbour_prev);
   // fprintf(stderr, "[%d] Neighbour next: %d\n", me, neighbour_next);
 
-  computation_time = -MPI_Wtime();
+  //computation_time = -MPI_Wtime();
   // Compute initial stats
+  #pragma omp parallel for collapse(3) reduction(+:max_population_local[:N_SPECIES+1])
   for (int32_t x = 1; x <= height; x++) {
     for (int32_t y = 0; y < n; y++) {
       for (int32_t z = 0; z < n; z++) {
@@ -224,7 +225,7 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
       }
     }
   }
-  computation_time += MPI_Wtime();
+  //computation_time += MPI_Wtime();
 
   /*if (me == 1) {
     for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
@@ -245,58 +246,66 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
       fprintf(stderr, "[%d] %d %ld %d\n", me, specie, max_population[specie], peak_gen[specie]);
     }
   }*/
-  for (int32_t gen = 0; gen < max_gen; gen++) {
-    computation_time = -MPI_Wtime();
-    for (int32_t x = 1; x <= height; x++) {
-      for (int32_t y = 0; y < n; y++) {
-        for (int32_t z = 0; z < n; z++) {
-          new_val = next_inhabitant(x, y, z, n, old);
-          new[x][y][z] = new_val;
-          population_local[new_val]++;
-          // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
-          //         z, n, new[x][y][z]);
+  #pragma omp parallel
+  {
+    for (int32_t gen = 0; gen < max_gen; gen++) {
+      computation_time = -MPI_Wtime();
+      #pragma omp for collapse(3) reduction(+:population_local[:N_SPECIES+1]) private(new_val)
+      for (int32_t x = 1; x <= height; x++) {
+        for (int32_t y = 0; y < n; y++) {
+          for (int32_t z = 0; z < n; z++) {
+            new_val = next_inhabitant(x, y, z, n, old);
+            new[x][y][z] = new_val;
+            population_local[new_val]++;
+            // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
+            //         z, n, new[x][y][z]);
+          }
         }
       }
-    }
-    computation_time += MPI_Wtime();
-    total_computation_time += computation_time;
+      computation_time += MPI_Wtime();
+      total_computation_time += computation_time;
+      #pragma omp single
+      {
+          //fprintf(stderr, "[%d] Computation time: %.1fs\n", me, computation_time);
+        
+        //(stderr, "[%d] Sending and receiving stuff\n", me);
+        MPI_Isend(&(new[1][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_PREV, comm, requests);
+        MPI_Irecv(&(new[height+1][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_PREV, comm, requests+2);
 
-    //(stderr, "[%d] Sending and receiving stuff\n", me);
-    MPI_Isend(&(new[1][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_PREV, comm, requests);
-    MPI_Irecv(&(new[height+1][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_PREV, comm, requests+2);
+        MPI_Isend(&(new[height][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_NEXT, comm, requests+1);
+        MPI_Irecv(&(new[0][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_NEXT, comm, requests+3);
+        //fprintf(stderr, "[%d] Sending and receiving stuff @ WaitAll\n", me);
+        MPI_Wait(&request_reduce, &status_reduce);
 
-    MPI_Isend(&(new[height][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_NEXT, comm, requests+1);
-    MPI_Irecv(&(new[0][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_NEXT, comm, requests+3);
-    //fprintf(stderr, "[%d] Sending and receiving stuff @ WaitAll\n", me);
-    MPI_Wait(&request_reduce, &status_reduce);
-
-    if (me == 0) {
-      for (int i = 0; i <= N_SPECIES; i++) {
-        if (max_population[i] < population[i]) {
-          max_population[i] = population[i];
-          peak_gen[i] = gen;
+        if (me == 0) {
+          for (int i = 0; i <= N_SPECIES; i++) {
+            if (max_population[i] < population[i]) {
+              max_population[i] = population[i];
+              peak_gen[i] = gen;
+            }
+          }
         }
+
+        memset(population_local_old, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+
+        MPI_Waitall(4, requests, status);
+
+        tmp = old;
+        old = new;
+        new = tmp;
+
+        population_local_tmp = population_local_old;
+        population_local_old = population_local;
+        population_local = population_local_tmp;
+
+        //fprintf(stderr, "[%d] Computing stats\n", me);
+        // No need for barrier, because all must say something for reduce
+        reduce_time = -MPI_Wtime();
+        MPI_Ireduce(population_local_old, population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm, &request_reduce);
+        reduce_time += MPI_Wtime();
+        total_reduce_time += reduce_time;
       }
     }
-
-    memset(population_local_old, 0, sizeof(uint64_t) * (N_SPECIES + 1));
-
-    MPI_Waitall(4, requests, status);
-
-    tmp = old;
-    old = new;
-    new = tmp;
-
-    population_local_tmp = population_local_old;
-    population_local_old = population_local;
-    population_local = population_local_tmp;
-
-    //fprintf(stderr, "[%d] Computing stats\n", me);
-    // No need for barrier, because all must say something for reduce
-    reduce_time = -MPI_Wtime();
-    MPI_Ireduce(population_local_old, population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm, &request_reduce);
-    reduce_time += MPI_Wtime();
-    total_reduce_time += reduce_time;
   }
   MPI_Wait(&request_reduce, &status_reduce);
 
