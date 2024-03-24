@@ -15,6 +15,8 @@
 
 \newcommand{\HRule}[1]{\rule{\linewidth}{#1}}
 
+\newcommand{\dsanote}[1]{\textbf{[dsa: #1]}}
+
 % ------------------------------------------------------------------------------
 
 \begin{document}
@@ -27,20 +29,77 @@
 		\\ [2.0cm]
 		\HRule{1.5pt} \\
 		\LARGE \textbf{Parallel and Distributed Computing
-		\HRule{2.0pt} \\ [0.6cm] \LARGE{Project Report - (Serial or OMP or MPI) Delivery} \vspace*{10\baselineskip}}
+		\HRule{2.0pt} \\ [0.6cm] \LARGE{Project Report - MPI Delivery} \vspace*{10\baselineskip}}
 		}
 \date{}
 \author{\textbf{Authors} \\ 
 		Carolina Coelho - 99189\\
 		Diogo Melita - 99202\\
 		Diogo Antunes - 99210}
-
 \maketitle
 \newpage
 
 % ------------------------------------------------------------------------------
 
+
+\section{Data Decomposition}
+
+Horizontal slicing
+Two dimensions
+Cubes
+
+Argue that $n >> p$, so we can just give $n**2$ blocks. Also makes it simpler
+to reason about what information must be exchanged
+
+\dsanote{Try with different data decomposition}
+
+\section{??}
+
+\dsanote{Make a plot with the efficiency - https://www.youtube.com/watch?v=aqySX4lpzn0&t=1858s (45:00)}
+\dsanote{Maybe recall amdal law and check whether it applies}
+\dsanote{Gustafson's law}
+\dsanote{Measure load balance in machines}
+
+\dsanote{The impact of latency is speedup} -> use experiments with \texttt{-N}
+
+% ist199202@borg:/mnt/cirrus/users/0/2/ist199202/dsa/src/mpi$ srun -n 64 ./life3d-mpi 3 1024 .4 100
+% Took: 2.7s
+% Communication time: 0.0s
+% Reduce time: 0.1s
+% Computation time: 2.5s
+% 1 99923786 1
+% 2 90413714 1
+% 3 83137654 1
+% 4 77287897 1
+% 5 72448825 1
+% 6 68444736 1
+% 7 65198270 1
+% 8 62633412 1
+% 9 60611199 1
+% ist199202@borg:/mnt/cirrus/users/0/2/ist199202/dsa/src/mpi$ srun -N 64 ./life3d-mpi 3 1024 .4 100
+% Took: 8.6s
+% Communication time: 0.1s
+% Reduce time: 6.2s
+% Computation time: 2.4s
+% 1 99923786 1
+% 2 90413714 1
+% 3 83137654 1
+% 4 77287897 1
+% 5 72448825 1
+% 6 68444736 1
+% 7 65198270 1
+% 8 62633412 1
+% 9 60611199 1
+
+Add MPI_Barrier and one can conclude that it's because some nodes block waiting
+for others
+
 \section{Examples}
+
+\section{Hybrid approach}
+
+Say that the cluster is actually more of a NUMA, so a hybrid approach seems
+to be a better fit than a UMA architecture.
 
 Section text
 
