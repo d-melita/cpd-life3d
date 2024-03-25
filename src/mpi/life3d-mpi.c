@@ -342,8 +342,8 @@ int main(int argc, char *argv[]) {
 
   if (!me) {
     fprintf(stderr, "Took: %.1fs\n", exec_time);
-    fprintf(stderr, "Reduce time: %.1fs\n", total_reduce_time);
-    fprintf(stderr, "Computation time: %.1fs\n", total_computation_time);
+    //fprintf(stderr, "Reduce time: %.1fs\n", total_reduce_time);
+    //fprintf(stderr, "Computation time: %.1fs\n", total_computation_time);
   }
 
   return EXIT_SUCCESS;

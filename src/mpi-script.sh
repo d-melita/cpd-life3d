@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#SBATCH --job-name=g09-tests
-#SBATCH --output=mpi_%j.out
-#SBATCH --error=mpi_%j.err
-#SBATCH --ntasks=20
-
 RED="\e[31m"
 GREEN="\e[32m"
 ENDCOLOR="\e[0m"
@@ -31,9 +26,6 @@ function compile() {
 if [[ $# -gt 0 ]]; then
     die
 fi
-else
-    die  
-fi
 
 # Cmpiile code
 
@@ -52,22 +44,20 @@ for file in $(ls -- *.in); do
 
     name="${file%.*}"
     in=$name.in
-    out8=$name.out8
+    out=$name.out
+
     err_mpi8=$name.err_mpi8
     myout_mpi8=$name.myout_mpi8
     diff_mpi8=$name.diff_mpi8
 
-    out16=$name.out16
     err_mpi16=$name.err_mpi16
     myout_mpi16=$name.myout_mpi16
     diff_mpi16=$name.diff_mpi16
 
-    out32=$name.out32
     err_mpi32=$name.err_mpi32
     myout_mpi32=$name.myout_mpi32
     diff_mpi32=$name.diff_mpi32
 
-    out64=$name.out64
     err_mpi64=$name.err_mpi64
     myout_mpi64=$name.myout_mpi64
     diff_mpi64=$name.diff_mpi64
@@ -76,8 +66,8 @@ for file in $(ls -- *.in); do
 
     # Run with mpi version with multiple mpi tasks: 8, 16, 32, 64
     echo "Running mpi version with 8 mpi tasks:"
-    srun -n 8 ../mpi/life3d-mpi $(cat $in) > $myout_mpi8 2> $err_mpi8
-    diff $out8 $myout_mpi8 > $diff_mpi8
+    srun -n 8 -w lab3p[1,2,4-7,9,10] ../mpi/life3d-mpi $(cat $in) > $myout_mpi8 2> $err_mpi8
+    diff $out $myout_mpi8 > $diff_mpi8
 
     if [ -s $diff_mpi8 ]; then
         echo -e "$RED mpi failed$ENDCOLOR"
@@ -85,14 +75,13 @@ for file in $(ls -- *.in); do
     else
         echo -e "$GREEN mpi success$ENDCOLOR"
     fi
+    cat $err_mpi8
 
-    # Calculate time and display speedup
-    time_mpi8=$(tail -n 1 $err_mpi8 | grep -oE "[0-9]+(\.[0-9]+)?")
-    echo "Time mpi: $time_mpi8 seconds"
+    sleep 2
 
     echo "Running mpi version with 16 mpi tasks:"
-    srun -n 16 ../mpi/life3d-mpi $(cat $in) > $myout_mpi16 2> $err_mpi16
-    diff $out16 $myout_mpi16 > $diff_mpi16
+    srun -n 16 -w lab3p[1,2,4-7,9,10] ../mpi/life3d-mpi $(cat $in) > $myout_mpi16 2> $err_mpi16
+    diff $out $myout_mpi16 > $diff_mpi16
 
     if [ -s $diff_mpi16 ]; then
         echo -e "$RED mpi failed$ENDCOLOR"
@@ -101,13 +90,13 @@ for file in $(ls -- *.in); do
         echo -e "$GREEN mpi success$ENDCOLOR"
     fi
 
-    # Calculate time and display speedup
-    time_mpi16=$(tail -n 1 $err_mpi16 | grep -oE "[0-9]+(\.[0-9]+)?")
-    echo "Time mpi: $time_mpi16 seconds"
+    cat $err_mpi16
+
+    sleep 2
 
     echo "Running mpi version with 32 mpi tasks:"
-    srun -n 32 ../mpi/life3d-mpi $(cat $in) > $myout_mpi32> $err_mpi32
-    diff $out32 $myout_mpi32 > $diff_mpi32
+    srun -n 32 -w lab3p[1,2,4-7,9,10] ../mpi/life3d-mpi $(cat $in) > $myout_mpi32 2> $err_mpi32
+    diff $out $myout_mpi32 > $diff_mpi32
 
     if [ -s $diff_mpi32 ]; then
         echo -e "$RED mpi failed$ENDCOLOR"
@@ -116,13 +105,13 @@ for file in $(ls -- *.in); do
         echo -e "$GREEN mpi success$ENDCOLOR"
     fi
 
-    # Calculate time and display speedup
-    time_mpi32=$(tail -n 1 $err_mpi32 | grep -oE "[0-9]+(\.[0-9]+)?")
-    echo "Time mpi: $time_mpi32 seconds"
+    cat $err_mpi32
+
+    sleep 2
 
     echo "Running mpi version with 64 mpi tasks:"
-    srun -n 64 ../mpi/life3d-mpi $(cat $in) > $myout_mpi64 2> $err_mpi64
-    diff $out64 $myout_mpi64 > $diff_mpi64
+    srun -n 64 -w lab3p[1,2,4-7,9,10] ../mpi/life3d-mpi $(cat $in) > $myout_mpi64 2> $err_mpi64
+    diff $out $myout_mpi64 > $diff_mpi64
 
     if [ -s $diff_mpi64 ]; then
         echo -e "$RED mpi failed$ENDCOLOR"
@@ -131,9 +120,7 @@ for file in $(ls -- *.in); do
         echo -e "$GREEN mpi success$ENDCOLOR"
     fi
 
-    # Calculate time and display speedup
-    time_mpi64=$(tail -n 1 $err_mpi64 | grep -oE "[0-9]+(\.[0-9]+)?")
-    echo "Time mpi: $time_mpi64 seconds"
+    cat $err_mpi64
 done
 
 printf "\nFailed $failed/$total\n"
