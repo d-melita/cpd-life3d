@@ -29,3 +29,7 @@ plotting/.tool-versions
 src/omp/report/report.f*
 src/omp/report/report.out
 src/omp/report/report.synctex.gz
+
+src/mpi/report/report.f*
+src/mpi/report/report.out
+src/mpi/report/report.synctex.gz
