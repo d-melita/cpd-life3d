@@ -41,21 +41,88 @@
 
 % ------------------------------------------------------------------------------
 
+\section{Introduction}
+The goal for this stage is to parallelize the first version fo the \texttt{lifed3d} 
+program using MPI.
 
-\section{Data Decomposition}
+\section{1st Approach}
 
-Horizontal slicing
-Two dimensions
-Cubes
+In the \texttt{OpenMP} phase, it was already established which part of the code needed parallelization. 
+The main challenge then shifted to parallelizing the computation of successive generations across 
+different machines and consolidating the results onto a single machine.
 
-Argue that $n >> p$, so we can just give $n**2$ blocks. Also makes it simpler
-to reason about what information must be exchanged
+\subsection{Data Decomposition}
+
+The initial and arguably crucial step in this stage involved determining how the grid would be 
+divided among the various machines. The primary functional approach devised was to partition the 
+grid into multiple horizontal slices, with each slice allocated to a different machine. It's 
+worth noting that these slices were partitioned to ensure that each had a similar size, thus 
+maintaining load balance across the various machines during computation.
+
+This approach led to the decision that each machine would only need to allocate resources for the 
+slice it was assigned, effectively reducing the program's memory usage on each machine. Following 
+the grid partitioning, the next crucial step was determining how communication between the machines 
+would be managed. Given the horizontal partitioning of the grid, each machine would only need to 
+communicate with the adjacent machines—specifically, the previous and next machines. During this 
+communication, the involved machines would exchange their borders, as these are necessary for 
+computing the next generation of border cells.
+
+
+As each machine only allocates resources for the slice it was assigned to and communicates solely 
+with the previous and next machines, it follows that each machine will allocate an additional 
+$2 \times n \times n$ cells for the borders of the neighboring slices.
+
+\subsection{Next generation computation}
+
+Once the grid is generated and partitioned among the different machines, the subsequent step is to compute 
+the next generations of the grid and assess its status. The core of this code segment closely resembles 
+that of previous stages, with the distinction that each machine only computes the next generation 
+of the slice it was assigned to. Furthermore, akin to previous stages, the initial statistics of the grid 
+are computed before determining the next generations, albeit with the aforementioned difference.
+
+It is crucial to note that since different machines, each with its own memory, are utilized in this stage, 
+the computed statistics are only local to each machine. Consequently, these statistics need to be 
+consolidated into a single entity, specifically the master machine.
+
+\subsection{Communication}
+As previously mentioned, the initial step in transitioning to the simulation phase is to compute the initial 
+statistics of the grid. Given that each machine computes only its local statistics, it becomes necessary to 
+consolidate the statistics of each machine into a single machine. To achieve this, the \texttt{MPI\_Ireduce} function
+was employed. This function was selected for its non-blocking nature, allowing work to continue while communication 
+takes place until the results are required.
+
+In this stage, since each machine already possesses the initial neighboring cells of its borders at the outset, it 
+can initially compute the next generation of its slice and subsequently update the borders. As a result, the requested 
+reduction results are only needed after border exchanges. Therefore, the \texttt{MPI\_Wait} function is utilized to wait 
+for the completion of the reduction process.
+
+
+Border exchanging is facilitated through the use of the \texttt{MPI\_Isend} and \texttt{MPI\_Irecv} functions.
+These functions were chosen for their non-blocking nature, allowing work to proceed while communication is underway. 
+In this context, the intermediate work entails updating the grid status by the master machine. Subsequently, the 
+\texttt{MPI\_Waitall} function is employed to await the completion of the border exchange process.
+
+Following this, it becomes necessary to reduce the statistics computed at the beginning of the simulation. 
+This is accomplished using the \texttt{MPI\_Ireduce} function, as previously mentioned, given that the results 
+are required only after the border exchange has been completed.
+
+It's crucial to highlight that due to the utilization of the \texttt{MPI\_Ireduce} function, each machine must uphold 
+two arrays for the statistics, exchanged before each generation, akin to the grids. This precaution is necessary to 
+prevent potential corruption of statistics, attributable to the non-blocking nature of the function, which permits concurrent 
+work while communication is in progress.
+
+%Horizontal slicing
+%Two dimensions
+%Cubes
+
+%Argue that $n >> p$, so we can just give $n**2$ blocks. Also makes it simpler
+%to reason about what information must be exchanged
 
 \dsanote{Try with different data decomposition}
 
 \section{??}
 
-\dsanote{Make a plot with the efficiency - https://www.youtube.com/watch?v=aqySX4lpzn0&t=1858s (45:00)}
+\dsanote{Make a plot with the efficiency}
 \dsanote{Maybe recall amdal law and check whether it applies}
 \dsanote{Gustafson's law}
 \dsanote{Measure load balance in machines}
@@ -91,10 +158,7 @@ to reason about what information must be exchanged
 % 8 62633412 1
 % 9 60611199 1
 
-Add MPI_Barrier and one can conclude that it's because some nodes block waiting
-for others
-
-\section{Examples}
+% Add MPI_Barrier and one can conclude that it's because some nodes block waiting for others
 
 \section{Hybrid approach}
 
@@ -103,18 +167,6 @@ to be a better fit than a UMA architecture.
 
 Section text
 
-\subsection{Pictures}
-
-% \begin{figure}[htbp]
-%     \center
-%     \includegraphics[scale=0.06]{img/photo.jpg}
-%     \caption{Sydney, NSW}
-% \end{figure}
-
-
-\subsection{Citation}
-
-This is a citation\cite{Eg}.
 
 \newpage
 
