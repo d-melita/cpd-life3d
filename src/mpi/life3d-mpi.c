@@ -7,8 +7,8 @@
 
 #include "world_gen.h"
 
-#define TAG_ABOVE 1
-#define TAG_BELLOW 2
+#define TAG_PREV 1
+#define TAG_NEXT 2
 
 typedef struct args {
   int32_t gen_count;
@@ -29,17 +29,21 @@ uint64_t max_population_local[N_SPECIES + 1];
 
 uint64_t max_population[N_SPECIES + 1];
 
-uint64_t population_local[N_SPECIES + 1];
+uint64_t* population_local;
+
+uint64_t* population_local_old;
+
+uint64_t* population_local_tmp;
 
 uint64_t population[N_SPECIES + 1];
 
-double total_communication_time = 0;
-
-//double total_computation_time = 0;
+double total_computation_time = 0;
 
 double total_reduce_time = 0;
 
 char ***old, ***new, ***tmp;
+
+MPI_Comm comm;
 
 void help() { fprintf(stderr, "\nUsage: life3d gen_count N density seed\n"); }
 
@@ -176,6 +180,8 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
 
 void prepare(int n, int start, int end) {
   new = new_grid(n, end + 1 - start);
+  population_local = (uint64_t*) malloc(sizeof(uint64_t) * (N_SPECIES + 1));
+  population_local_old = (uint64_t*) malloc(sizeof(uint64_t) * (N_SPECIES + 1));
   memset(peak_gen, 0, sizeof(uint32_t) * (N_SPECIES + 1));
   memset(max_population, 0, sizeof(uint64_t) * (N_SPECIES + 1));
   memset(max_population_local, 0, sizeof(uint64_t) * (N_SPECIES + 1));
@@ -197,17 +203,17 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
   char new_val;
   old = grid;
   double reduce_time;
-  //double computation_time;
-  double communication_time;
+  double computation_time;
+  //double communication_time;
 
   MPI_Request requests[4];
   MPI_Status status[4];
 
-  int neighbour_above = (me - 1 + p) % p;
-  int neighbour_bellow = (me + 1) % p;
+  int neighbour_prev = (p < n) ? (me - 1 + p) % p : (me - 1 + n) % n;
+  int neighbour_next = (p < n) ? (me + 1) % p : (me + 1) % n;
 
-  fprintf(stderr, "[%d] Neighbout above: %d\n", me, neighbour_above);
-  fprintf(stderr, "[%d] Neighbout bellow: %d\n", me, neighbour_bellow);
+  // fprintf(stderr, "[%d] Neighbour prev: %d\n", me, neighbour_prev);
+  // fprintf(stderr, "[%d] Neighbour next: %d\n", me, neighbour_next);
 
   //computation_time = -MPI_Wtime();
   // Compute initial stats
@@ -220,7 +226,6 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
     }
   }
   //computation_time += MPI_Wtime();
-  //total_communication_time += computation_time;
 
   /*if (me == 1) {
     for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
@@ -229,7 +234,10 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
   }*/
 
   reduce_time = -MPI_Wtime();
-  MPI_Reduce(max_population_local, max_population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  // MPI_Reduce(max_population_local, max_population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Request request_reduce;
+  MPI_Status status_reduce;
+  MPI_Ireduce(max_population_local, max_population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm, &request_reduce);
   reduce_time += MPI_Wtime();
   total_reduce_time += reduce_time;
 
@@ -238,12 +246,10 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
       fprintf(stderr, "[%d] %d %ld %d\n", me, specie, max_population[specie], peak_gen[specie]);
     }
   }*/
-
   #pragma omp parallel
   {
     for (int32_t gen = 0; gen < max_gen; gen++) {
-      //computation_time = -MPI_Wtime();
-
+      computation_time = -MPI_Wtime();
       #pragma omp for collapse(3) reduction(+:population_local[:N_SPECIES+1]) private(new_val)
       for (int32_t x = 1; x <= height; x++) {
         for (int32_t y = 0; y < n; y++) {
@@ -256,45 +262,58 @@ void simulation(int32_t n, int32_t max_gen, char ***grid, uint32_t height) {
           }
         }
       }
-      //computation_time += MPI_Wtime();
-      //total_computation_time += computation_time;
-
-      #pragma omp single 
+      computation_time += MPI_Wtime();
+      total_computation_time += computation_time;
+      #pragma omp single
       {
+          //fprintf(stderr, "[%d] Computation time: %.1fs\n", me, computation_time);
+        
         //(stderr, "[%d] Sending and receiving stuff\n", me);
-        communication_time = -MPI_Wtime();
-        MPI_Isend(&(new[1][0][0]), n*n, MPI_CHAR, neighbour_above, TAG_ABOVE, MPI_COMM_WORLD, requests);
-        MPI_Irecv(&(new[height+1][0][0]), n*n, MPI_CHAR, neighbour_bellow, TAG_ABOVE, MPI_COMM_WORLD, requests+2);
+        MPI_Isend(&(new[1][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_PREV, comm, requests);
+        MPI_Irecv(&(new[height+1][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_PREV, comm, requests+2);
 
-        MPI_Isend(&(new[height][0][0]), n*n, MPI_CHAR, neighbour_bellow, TAG_BELLOW, MPI_COMM_WORLD, requests+1);
-        MPI_Irecv(&(new[0][0][0]), n*n, MPI_CHAR, neighbour_above, TAG_BELLOW, MPI_COMM_WORLD, requests+3);
-
+        MPI_Isend(&(new[height][0][0]), n*n, MPI_CHAR, neighbour_next, TAG_NEXT, comm, requests+1);
+        MPI_Irecv(&(new[0][0][0]), n*n, MPI_CHAR, neighbour_prev, TAG_NEXT, comm, requests+3);
         //fprintf(stderr, "[%d] Sending and receiving stuff @ WaitAll\n", me);
-        MPI_Waitall(4, requests, status);
-        communication_time += MPI_Wtime();
-        total_communication_time += communication_time;
-
-        //fprintf(stderr, "[%d] Computing stats\n", me);
-        // No need for barrier, because all must say something for reduce
-        reduce_time = -MPI_Wtime();
-        MPI_Reduce(population_local, population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-        reduce_time += MPI_Wtime();
-        total_reduce_time += reduce_time;
-
-        tmp = old;
-        old = new;
-        new = tmp;
+        MPI_Wait(&request_reduce, &status_reduce);
 
         if (me == 0) {
           for (int i = 0; i <= N_SPECIES; i++) {
             if (max_population[i] < population[i]) {
               max_population[i] = population[i];
-              peak_gen[i] = gen + 1;
+              peak_gen[i] = gen;
             }
           }
         }
 
-        memset(population_local, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+        memset(population_local_old, 0, sizeof(uint64_t) * (N_SPECIES + 1));
+
+        MPI_Waitall(4, requests, status);
+
+        tmp = old;
+        old = new;
+        new = tmp;
+
+        population_local_tmp = population_local_old;
+        population_local_old = population_local;
+        population_local = population_local_tmp;
+
+        //fprintf(stderr, "[%d] Computing stats\n", me);
+        // No need for barrier, because all must say something for reduce
+        reduce_time = -MPI_Wtime();
+        MPI_Ireduce(population_local_old, population, N_SPECIES+1, MPI_UNSIGNED_LONG, MPI_SUM, 0, comm, &request_reduce);
+        reduce_time += MPI_Wtime();
+        total_reduce_time += reduce_time;
+      }
+    }
+  }
+  MPI_Wait(&request_reduce, &status_reduce);
+
+  if (me == 0) {
+    for (int i = 0; i <= N_SPECIES; i++) {
+      if (max_population[i] < population[i]) {
+        max_population[i] = population[i];
+        peak_gen[i] = max_gen;
       }
     }
   }
@@ -309,22 +328,37 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &me);
 
   // Starting x value
-  uint32_t start = (me * args.n) / p;
-  uint32_t end = (((me+1) * args.n) / p) - 1;
+  uint32_t start = (p <= args.n) ? (me * args.n) / p : me;
+  uint32_t end = (p <= args.n) ? (((me+1) * args.n) / p) - 1 : me;
+  // fprintf(stderr, "[%d] I'm responsible for x from %d to %d\n", me, start, end);
 
-  //fprintf(stderr, "[%d] I'm responsible for z from %d to %d\n", me, start, end);
-  
   char ***grid = gen_initial_grid(args.n, args.density, args.seed, start, end);
-
   prepare(args.n, start, end);
 
+  if (p > args.n) { 
+    MPI_Group all, group;
+    MPI_Comm_group(MPI_COMM_WORLD, &all);
+
+    int* ranks = (int*)malloc(args.n * sizeof(int));
+    for (int i = 0; i < args.n; i++) {
+      ranks[i] = i;
+    }
+
+    MPI_Group_incl(all, args.n, ranks, &group);
+    MPI_Comm_create(MPI_COMM_WORLD, group, &comm);
+  } else {
+    comm = MPI_COMM_WORLD;
+  }
+
   MPI_Barrier(MPI_COMM_WORLD);
+    
   exec_time = -MPI_Wtime();
 
-  simulation(args.n, args.gen_count, grid, end + 1 - start);
-  
-  exec_time += MPI_Wtime();
+  if (me < args.n) {
+    simulation(args.n, args.gen_count, grid, end + 1 - start);
+  } 
 
+  exec_time += MPI_Wtime();
   MPI_Barrier(MPI_COMM_WORLD);
 
   finish();
@@ -333,8 +367,7 @@ int main(int argc, char *argv[]) {
 
   if (!me) {
     fprintf(stderr, "Took: %.1fs\n", exec_time);
-    fprintf(stderr, "Communication time: %.1fs\n", total_communication_time);
-    fprintf(stderr, "Reduce time: %.1fs\n", total_reduce_time);
+    //fprintf(stderr, "Reduce time: %.1fs\n", total_reduce_time);
     //fprintf(stderr, "Computation time: %.1fs\n", total_computation_time);
   }
 
