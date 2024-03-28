@@ -97,10 +97,15 @@ reduction results are only needed after border exchanges. Therefore, the \texttt
 for the completion of the reduction process.
 
 
-Border exchanging is facilitated through the use of the \texttt{MPI\_Isend} and \texttt{MPI\_Irecv} functions.
+Border exchanging is facilitated through the use of the \texttt{MPI\_Isend} and \texttt{MPI\_Isend} functions.
 These functions were chosen for their non-blocking nature, allowing work to proceed while communication is underway. 
 In this context, the intermediate work entails updating the grid status by the master machine. Subsequently, the 
 \texttt{MPI\_Waitall} function is employed to await the completion of the border exchange process.
+
+When using the \texttt{MPI\_Isend} and \texttt{MPI\_Isend} methods, could have be used the communication time to 
+perform the computation of grid values that did not require accessing the border values. However, after conducting 
+several measurements of communication time, it was concluded that it is negligible and does not 
+justify the aforementioned approach.
 
 Following this, it becomes necessary to reduce the statistics computed at the beginning of the simulation. 
 This is accomplished using the \texttt{MPI\_Ireduce} function, as previously mentioned, given that the results 
