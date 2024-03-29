@@ -172,6 +172,54 @@ to be a better fit than a UMA architecture.
 
 Section text
 
+\section{Results}
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c c c c c||} 
+	 \hline
+	 Version & Number of Nodes & Input 1 & Input 2 & Input 3 & Input 4\\ [0.5ex] 
+	 \hline\hline
+	 serial & $N/A$ & 13.2 & 20.8 & 72.5 & 168.1 \\ 
+	 mpi & 8 & 1.8 & 2.3 & 7.2 & 16.9 \\ 
+	 mpi & 16 & 0.9 & 1.2 & 3.9 & 8.5  \\
+	 mpi & 32 & 0.7 & 0.9 & 2.9 & 6.8 \\
+	 mpi & 64 & 0.4 & 0.5 & 1.5 & 3.7 \\ [1ex] 
+	 \hline
+	\end{tabular}
+	\caption{Times of execution, in seconds, of the serial and parallelized versions of the code.}
+	\label{execution-times}
+\end{table}
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c c c c c||} 
+	 \hline
+	 Version & Number of Nodes & Input 1 & Input 2 & Input 3 & Input 4\\ [0.5ex] 
+	 \hline\hline
+	 mpi & 8 & 7.3 & 9 & 10.1 & 9.9 \\ 
+	 mpi & 16 & 14.7 & 17.3 & 18.6 & 19.8  \\
+	 mpi & 32 & 18.9 & 23.1 & 25 & 24.7 \\
+	 mpi & 64 & 33 & 41.6 & 48.6 & 45.4 \\ [1ex] 
+	 \hline
+	\end{tabular}
+	\caption{Speedup achieved with the parallelized versions of the code, comparing to the serial version}
+	\label{speedup}
+\end{table}
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{||c c c c c c c||} 
+	 \hline
+	 Version & Number of Nodes & Number of Threads & Input 1 & Input 2 & Input 3 & Input 4\\ [0.5ex] 
+	 \hline\hline
+	 mpi-omp & 16 & 4 & 0.5 & 0.6 & 1.7 & 3.8 \\  [1ex] 
+	 \hline
+	\end{tabular}
+	\caption{Times of execution, in seconds, of the mpi + omp version of the code.}
+	\label{times-mpi-omp}
+\end{table}
+
 
 \newpage
 
