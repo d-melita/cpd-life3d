@@ -13,4 +13,5 @@ jobs:
           cat version
       - name: Run tests for configured version
         run: |
-          cd src && ./test
+          sudo apt-get install mpich
+          cd src && ./test.sh
