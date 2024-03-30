@@ -21,7 +21,6 @@ char ***new_grid(uint32_t N, uint32_t height) {
   int x, y, z;
   char ***grid = (char ***) malloc((height+2) * sizeof(char **));
 
-  //fprintf(stderr, "Generating grid of height %d:\n", height);
   if (grid == NULL) {
     printf("Failed to allocate matrix\n");
     exit(1);

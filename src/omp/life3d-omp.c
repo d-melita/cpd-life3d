@@ -92,8 +92,6 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
   char neighbour, current;
   memset(counts, 0, (N_SPECIES + 1) * sizeof(char));
 
-  // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid)\n", x, y, z, n);
-
   int32_t left = (x - 1 + n) % n;
   int32_t right = (x + 1 + n) % n;
 
@@ -146,9 +144,6 @@ char next_inhabitant(int32_t x, int32_t y, int32_t z, int32_t n,
     }
   }
 
-  // fprintf(stderr, "most_common: %d, most_common_count: %d, live_count: %d\n",
-          // most_common, most_common_count, live_count);
-
   if (current != 0) { // if cell is alive
     return (5 <= live_count && live_count <= 13) ? current : 0;
   } else { // if cell is dead
@@ -164,7 +159,6 @@ void prepare(int n) {
 }
 
 void finish() {
-  // fprintf(stderr, "Simulation finished\n");
   for (uint32_t specie = 1; specie <= N_SPECIES; specie++) {
     printf("%d %ld %d\n", specie, max_population[specie], peak_gen[specie]);
  }
@@ -173,9 +167,6 @@ void finish() {
 void simulation(int32_t n, int32_t max_gen, char ***grid) {
   char new_val;
   old = grid;
-
-  // fprintf(stderr, "Initial grid =================================\n");
-  // debug(n, grid);
 
   // Compute initial stats
   #pragma omp parallel
@@ -198,8 +189,6 @@ void simulation(int32_t n, int32_t max_gen, char ***grid) {
             new_val = next_inhabitant(x, y, z, n, old);
             new[x][y][z] = new_val;
             population[new_val]++;
-            // fprintf(stderr, "next_inhabitant(%d, %d, %d, %d, grid) = %d\n", x, y,
-            //         z, n, new[x][y][z]);
           }
         }
       }
