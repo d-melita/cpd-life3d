@@ -60,7 +60,7 @@ In this stage, this work will be split among processes instead of a team of thre
 The initial step in this stage involved determining how the grid would be divided among the various machines.
 Three decompositions were considered - decomposition along the x axis into slices,
 along the x and y axis and along all axis. A visualization of the different approaches
-can be found in figure~\cite{fig:viz-decomp}.
+can be found in Figure~\ref{fig:viz-decomp}.
 
 \begin{figure}[ht]
     \centering
@@ -123,19 +123,19 @@ and rightmost slices of the node's piece of the grid.
 \subsection{Implementation}
 
 In the first implementation, at the start of each generation, each node computes
-the new values for the current grid (and while doing this, computed the new
-statistics), then exchange with the neighbors the new border values (using the asynchronous
+the new values for the current grid (and while doing this, computes the new
+statistics), then exchanges with the neighbors the new border values (using the asynchronous
 communication primitives \texttt{ISend} and \texttt{IRecv}). At the end of the
 exchange, the machine-local statistics are aggregated at the root machine (using \texttt{Reduce}).
 It should be noted that a single \texttt{ISend} and \texttt{IRecv} are done per layer,
-which is possible because the x-y-plane is store contiguously in memory (this isn't possible
+which is possible because the y-z-plane is store contiguously in memory (this isn't possible
 for any other plane, in particular for any other data decomposition, the number of calls will
-grow with n).
+grow with $n$).
 
 This division already achieved very good speedups, specially for large values of 
 $n$. In particular, for the 4 inputs considered, the execution time breakdown can
 be found in Figure~\ref{time-breakdown}.
-(the raw data is provided in Appendix A, table~\ref{tab:mpi_performance})
+(the raw data is provided in Appendix A, Table~\ref{tab:mpi_performance})
 
 \begin{figure}[htbp]
     \centering
@@ -144,81 +144,51 @@ be found in Figure~\ref{time-breakdown}.
     \label{time-breakdown}
 \end{figure}
 
-As mentioned, computation is the bottleneck across all settings, which implies a small
-overhead to parallelization. However, it's
-clear that for small values of $n$, the reduction is also problematic. The key insight
-is that this reduction can be done while the computation of the new grid state takes place.
+The results show that computation is the bottleneck across all settings, which means that
+the parallelization overhead is small. However, it is
+clear that for small values of $n$, the reduction time is also considerable. The key insight
+is that this reduction can be done while the computation of the new grid takes place.
 To do this, \texttt{Reduce} was 
-replace by its asynchronous counterpart - \texttt{IReduce}. A small caveat is that
-now two local statistics arrays are required - one for the old statistics, upon which
-the aggregate value is being computed and one to store
-the statistics regarding the new grid that is being computed. In summary, with this approach,
-each node performs the following steps:
+replaced by its asynchronous counterpart - \texttt{IReduce}. A small caveat is that
+two local statistics arrays are required - one for the old statistics, over which the 
+reduction is working and one to store the statistics regarding the new grid state.
+In summary, with this approach, each node performs the following steps:
 
 \begin{enumerate}
 	\itemsep -0.2em
-	\item compute new state of its part of the grid
+	\item compute the new state of its part of the grid
 	\item share borders (using \texttt{ISend} and \texttt{IRecv})
 	\item wait for previous reduction (using \texttt{Wait})
-	\item (root node only) updates the problem solution
+	\item update the problem solution (root node only) 
 	\item wait for border exchange to complete (using \texttt{WaitAll})
 	\item start new reduction (using \texttt{IReduce})
 \end{enumerate}
 
-% As previously mentioned, the initial step in transitioning to the simulation phase is to compute the initial 
-% statistics of the grid. Given that each machine computes only its local statistics, it becomes necessary to 
-% consolidate the statistics of each machine into a single machine. To achieve this, the \texttt{MPI\_Ireduce} function
-% was employed. This function was selected for its non-blocking nature, allowing work to continue while communication 
-% takes place until the results are required.
-
-% In this stage, since each machine already possesses the initial neighboring cells of its borders at the outset, it 
-% can initially compute the next generation of its slice and subsequently update the borders. As a result, the requested 
-% reduction results are only needed after border exchanges. Therefore, the \texttt{MPI\_Wait} function is utilized to wait 
-% for the completion of the reduction process.
-%
-% Border exchanging is facilitated through the use of the \texttt{MPI\_Isend} and \texttt{MPI\_Irecv} functions.
-% These functions were chosen for their non-blocking nature, allowing work to proceed while communication is underway. 
-% In this context, the intermediate work entails updating the grid status by the master machine. Subsequently, the 
-% \texttt{MPI\_Waitall} function is employed to await the completion of the border exchange process.
-%
-% When using the \texttt{MPI\_Isend} and \texttt{MPI\_Irecv} methods, could have be used the communication time to 
-% perform the computation of grid values that did not require accessing the border values. However, after conducting 
-% several measurements of communication time, it was concluded that it is negligible and does not 
-% justify the aforementioned approach.
-%
-% Following this, it becomes necessary to reduce the statistics computed at the beginning of the simulation. 
-% This is accomplished using the \texttt{MPI\_Ireduce} function, as previously mentioned, given that the results 
-% are required only after the border exchange has been completed.
-%
-% It's crucial to highlight that due to the utilization of the \texttt{MPI\_Ireduce} function, each machine must uphold 
-% two arrays for the statistics, exchanged before each generation, akin to the grids. This precaution is necessary to 
-% prevent potential corruption of statistics, attributable to the non-blocking nature of the function, which permits concurrent 
-% work while communication is in progress.
-
 An alternative implementation was developed, where the border exchange process
 was done in background, while the computation of the "core" layers was performed.
-Since the communication didn't seem to be the biggest overhead, no speedup
+Since the communication is not be the biggest overhead, no meaningful speedup
 was expected. The code and the results, which confirm the expectation, can be found
 in Appendix B.
 
 \subsection{Load balancing}
 
-In the current partition of the space, the load for two nodes differs by at most
-a single layer. Given the values of $n$ and $p$ considered, it was found that
-one always represented a small percentage of the overall workload. The biggest
-problem is terms of load balancing was found when testing the solution
-in multiple labs - the labs machines computing power is not consistent across
-the cluster and in this case the homogeneous work division didn't prove to be the best as
-the fastest machines had to wait for the slowest in the group. A solution to
-this would be to have some dynamic division of work - for example, at the end
+In the partitioning scheme chosen, the load for two nodes differs by at most
+a single layer. Given the values of $n$ and $p$ considered, one always represents
+a small percentage of the overall workload. The biggest problem in terms of load balancing
+was found when testing the solution
+in multiple labs. The lab's machines computing power is not uniform across
+the cluster and when different labs are used simultaneously, the homogeneous work division
+didn't prove to be the best, since the fastest machines had to wait for the slowest in the group.
+A solution to
+this would be to have dynamic division of work - for example, at the end
 of each round, every node could compare with its neighbors the time it took to finish
 the computation. If the difference was above some threshold, the fastest
-neighbor would steal some of the work. It was considered that this solution was already
+neighbor would steal some of the work. This solution was already
 out of the scope of the project, so it was not implemented.
 
 \section{Hybrid approach}
 
-Besides the message passing approach, a hybrid approach was also benchmarked.
+Besides the MPI-only, a hybrid approach was also implemented.
 As already seen, the communication didn't prove to be much of an overhead, so
 no extra speedup was expected from this version. The approach to extending the MPI
 solution to a hybrid one resembles the one used to parallelize the initial
@@ -234,7 +204,7 @@ achieved using \texttt{omp single}.
 
 The final solution was benchmarked in RNL lab2 machines against the four public
 test provided by the faculty team. The results for the MPI only version 
-(\texttt{OMP\_THREAD\_NUM = 1}) is presented in tables \ref{execution-times} and
+(\texttt{OMP\_NUM\_THREADS = 1}) is presented in tables \ref{execution-times} and
 \ref{speedup}.
 
 \begin{table}[h!]
@@ -244,10 +214,10 @@ test provided by the faculty team. The results for the MPI only version
 	 Version & \#Nodes & Input 1 & Input 2 & Input 3 & Input 4\\ [0.5ex] 
 	 \hline\hline
 	 serial & $N/A$ & 13.2 & 20.8 & 72.5 & 168.1 \\ 
-	 mpi & 8 & 1.8 & 2.3 & 7.2 & 16.9 \\ 
-	 mpi & 16 & 0.9 & 1.2 & 3.9 & 8.5  \\
-	 mpi & 32 & 0.7 & 0.9 & 2.9 & 6.8 \\
-	 mpi & 64 & 0.4 & 0.5 & 1.5 & 3.7 \\ [1ex] 
+	 MPI & 8 & 1.8 & 2.3 & 7.2 & 16.9 \\ 
+	 MPI & 16 & 0.9 & 1.2 & 3.9 & 8.5  \\
+	 MPI & 32 & 0.7 & 0.9 & 2.9 & 6.8 \\
+	 MPI & 64 & 0.4 & 0.5 & 1.5 & 3.7 \\ [1ex] 
 	 \hline
 	\end{tabular}
 	\caption{Times of execution, in seconds, of the serial and parallelized versions of the code.}
@@ -278,14 +248,14 @@ test provided by the faculty team. The results for the MPI only version
 \end{figure}
 
 The results for Input 2 through 4 are rather surprising, since for 8 and 16 nodes
-the speedup is \textbf{greater than} the ideal speedup. It was found that this was
-due to the fact that the serial version must do a wrap-around in all three dimensions
-(and for this it requires modular arithmetic). Since the MPI program kept the
+the speedup is \textbf{greater than} the ideal speedup. This can be explained
+by a reduction of the total computation required. The serial version must perform a
+wrap-around in all three dimensions (and for this it requires modular arithmetic).
+Since the MPI program keeps the
 previous and next layer, modular arithmetic only needs to be performed in two
-dimensions. Since division is an expensive operation and the \texttt{next\_inhabitant}
-function is where most time is spent, this is a reasonable explanation. To test
-this, the original serial program was changed in the following way (this change
-obviously breaks the code, the goal is just to test the impact of removing the
+dimensions, which means there's a reduction in the computation required. To test this hypothesis,
+the original serial program was changed in the following way (this
+obviously breaks the code, the goal is just to evaluate the impact of removing the
 two division operations):
 
 \begin{lstlisting}[language=C,caption={Change to serial code}]
@@ -295,11 +265,20 @@ int32_t left = x;
 int32_t right = x;
 \end{lstlisting}
 
-The comparision between MPI with a single process, the serial unaltered version
-and the serial altered version can be found in Table~\cite{tbl:serial-times}.
+The comparison between MPI with a single process, the serial unaltered version
+and the serial altered version can be found in Table~\ref{tbl:serial-times}.
 Even though the results for MPI with $n=1$ don't perfectly match the altered serial
-version, it's clear that a large part of the super-linear speedup can be explained
+version, it is clear that a large part of the super-linear speedup can be explained
 by the reduction of the required computation due to program design changes.
+
+This example shows that in this stage of the project multiple (sometimes unexpected)
+factors impact the overall performance (other factors could be mentioned, such as the
+fact that at some point processes are hosted in different machines, thereby increasing
+communication latency). Since this is the case, making comparisons against theoretical estimations is
+less objective.
+For this reason, in this report, unlike the previous one, Amdahl's law or other metrics
+mentioned in the lectures are not used to verify the experimental results against
+concrete theoretical predictions.
 
 \begin{table}[h!]
 	\centering
@@ -319,11 +298,10 @@ by the reduction of the required computation due to program design changes.
 
 \subsection{Hybrid approach}
 
-The results of this change are in Table~\ref{tbl:hybrid-results}. A hybrid MPI+OpenMP
-approach using 16 processes each with 4 threads is compared with a 64 process
-MPI solution. As already mentioned, since the results show that computation
+A hybrid MPI+OpenMP approach using 16 processes each with 4 threads was compared with a 64 process
+MPI solution and the results are presented in Table~\ref{tbl:hybrid-results}. As already mentioned, since the results show that computation
 is the bottleneck, no improvement is expected, and the results confirm this expectation
-(there's even a very slight degradation that is believed to be due to the extra
+(there's even a very slight degradation, likely due to the extra
 synchronization required).
 
 \begin{table}[h!]
@@ -338,12 +316,8 @@ synchronization required).
 	 \hline
 	\end{tabular}
 	\caption{Times of execution, in seconds, of the hybrid version and corresponding MPI version}
-	\label{times-mpi-omp}
+	\label{tbl:hybrid-results}
 \end{table}
-
-\dsanote{Make a plot with the efficiency}
-\dsanote{Maybe recall amdal law and check whether it applies}
-\dsanote{Gustafson's law}
 
 \newpage
 
@@ -351,7 +325,6 @@ synchronization required).
 
 \begin{table}[htbp]
   \centering
-  \label{tab:mpi_performance}
   \begin{tabular}{lcccc}
     \toprule
     \textbf{Number of tasks} & \textbf{Total time (s)} & \textbf{Communication (s)} & \textbf{Reduce (s)} & \textbf{Computation (s)} \\
@@ -382,6 +355,7 @@ synchronization required).
     \bottomrule
   \end{tabular}
   \caption{First version execution time breakdown}
+  \label{tab:mpi_performance}
 \end{table}
 
 \newpage
